@@ -17,6 +17,7 @@ public class ParamBean {
 	@Value("${email.user.create}")
 	private String userCreate;
 	
+	private String name;
 	public String getCorpid() {
 		return corpid;
 	}
