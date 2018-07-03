@@ -17,7 +17,6 @@ import com.scenetec.email.bean.ParamBean;
 import com.scenetec.email.po.Department;
 import com.scenetec.email.po.EmailInfo;
 import com.scenetec.email.util.HttpClientUtil;
-import com.scenetec.email.util.LDAPAuthentication;
 
 @Component
 public class ScenetecMailService {
@@ -27,28 +26,28 @@ public class ScenetecMailService {
 	
 	public List<EmailInfo> getLadpData(){
 		List<EmailInfo> info = new ArrayList<EmailInfo>();
-		LDAPAuthentication ldap = new LDAPAuthentication();
-		try {
-			List<EmailInfo> emailInfoList = ldap.search();
-			List<String> ladpUserList = new ArrayList<String>();
-			/*for (EmailInfo emailInfo : emailInfoList) {
-				//机构信息
-				List<Department> department = emailInfo.getDepartmentMap();
-				//先处理部门数据
-				scenetecMailDepartment(department);
-				//处理成员信息
-				scenetecMailPerson(emailInfo);
-				//删除成员信息
-				Map<String, Object> map = emailInfo.getMap();
-				ladpUserList.add(String.valueOf(map.get("cn"))+"@scenetec.com");
-				//删除机构信息
-			}
-			//删除成员信息
-			deleteUserInfo(ladpUserList);*/
-			deleteDepartment();
-		} catch (NamingException e) {
-			e.printStackTrace();
-		}
+		LdapManager ldap = new LdapManager();
+//		try {
+//			List<EmailInfo> emailInfoList = ldap.search();
+//			List<String> ladpUserList = new ArrayList<String>();
+//			/*for (EmailInfo emailInfo : emailInfoList) {
+//				//机构信息
+//				List<Department> department = emailInfo.getDepartmentMap();
+//				//先处理部门数据
+//				scenetecMailDepartment(department);
+//				//处理成员信息
+//				scenetecMailPerson(emailInfo);
+//				//删除成员信息
+//				Map<String, Object> map = emailInfo.getMap();
+//				ladpUserList.add(String.valueOf(map.get("cn"))+"@scenetec.com");
+//				//删除机构信息
+//			}
+//			//删除成员信息
+//			deleteUserInfo(ladpUserList);*/
+//			deleteDepartment();
+//		} catch (NamingException e) {
+//			e.printStackTrace();
+//		}
 		return info;
 	}
 	//同步机构
@@ -97,15 +96,15 @@ public class ScenetecMailService {
         							
         							//获取创建的父部门id
         							String partentId = String.valueOf(createDepResJson.get("id"));
-        							//创建子部门
-        							if(department2.getDepartment()!=null) {
-        								JSONObject childParam = new JSONObject();
-            							childParam.put("name", department2.getDepartment().getName());
-                						//如果是根部门，设置根部门parentid为1
-            							childParam.put("parentid", Long.valueOf(partentId));
-                						String createChildDepRes =  HttpClientUtil.sendPost(childParam.toJSONString(), createDepartmentUrl);
-                						System.out.println("createChildDepRes:"+createChildDepRes);
-        							}
+//        							//创建子部门
+//        							if(department2.getDepartment()!=null) {
+//        								JSONObject childParam = new JSONObject();
+//            							childParam.put("name", department2.getDepartment().getName());
+//                						//如果是根部门，设置根部门parentid为1
+//            							childParam.put("parentid", Long.valueOf(partentId));
+//                						String createChildDepRes =  HttpClientUtil.sendPost(childParam.toJSONString(), createDepartmentUrl);
+//                						System.out.println("createChildDepRes:"+createChildDepRes);
+//        							}
         							
         						}
         							return createDepRes;
