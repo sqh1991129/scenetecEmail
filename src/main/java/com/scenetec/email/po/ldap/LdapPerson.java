@@ -15,6 +15,15 @@ public class LdapPerson {
     // 手机号
     private String mobile;
 
+    public String getDepartmentName() {
+        if (departments != null) {
+            return departments.get(0);
+        }
+        return null;
+    }
+
+    public boolean needAdd = false;
+
     public String getCn() {
         return cn;
     }

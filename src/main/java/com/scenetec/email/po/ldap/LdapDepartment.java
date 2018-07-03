@@ -8,7 +8,7 @@ public class LdapDepartment {
 
     private String parentName;
 
-    private boolean needAdd;
+    private boolean needAdd = false;
 
     public String getName() {
         return name;
@@ -24,6 +24,10 @@ public class LdapDepartment {
 
     public void setParentName(String parentName) {
         this.parentName = parentName;
+    }
+
+    public boolean isRoot() {
+        return parentName == null;
     }
 
     @Override
