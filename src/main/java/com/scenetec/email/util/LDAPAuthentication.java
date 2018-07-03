@@ -246,7 +246,7 @@ public class LDAPAuthentication {
     			Department childDepartment = new Department();
     			String[] departmentParentName = departmentArray[i-1].split("=");
     			childDepartment.setName(departmentParentName[1]);
-    			department.setDepartment(childDepartment);
+    			//department.setDepartment(childDepartment);
     		}
     		list.add(department);
 		}

@@ -19,6 +19,8 @@ import com.scenetec.email.po.EmailInfo;
 import com.scenetec.email.util.HttpClientUtil;
 import com.scenetec.email.util.LDAPAuthentication;
 
+import javafx.print.JobSettings;
+
 @Component
 public class ScenetecMailService {
 
@@ -28,10 +30,9 @@ public class ScenetecMailService {
 	public List<EmailInfo> getLadpData(){
 		List<EmailInfo> info = new ArrayList<EmailInfo>();
 		LDAPAuthentication ldap = new LDAPAuthentication();
-		try {
-			List<EmailInfo> emailInfoList = ldap.search();
+	/*		List<EmailInfo> emailInfoList = ldap.search();
 			List<String> ladpUserList = new ArrayList<String>();
-			/*for (EmailInfo emailInfo : emailInfoList) {
+			for (EmailInfo emailInfo : emailInfoList) {
 				//机构信息
 				List<Department> department = emailInfo.getDepartmentMap();
 				//先处理部门数据
@@ -46,9 +47,7 @@ public class ScenetecMailService {
 			//删除成员信息
 			deleteUserInfo(ladpUserList);*/
 			deleteDepartment();
-		} catch (NamingException e) {
-			e.printStackTrace();
-		}
+	
 		return info;
 	}
 	//同步机构
@@ -98,14 +97,14 @@ public class ScenetecMailService {
         							//获取创建的父部门id
         							String partentId = String.valueOf(createDepResJson.get("id"));
         							//创建子部门
-        							if(department2.getDepartment()!=null) {
+        							/*if(department2.getDepartment()!=null) {
         								JSONObject childParam = new JSONObject();
             							childParam.put("name", department2.getDepartment().getName());
                 						//如果是根部门，设置根部门parentid为1
             							childParam.put("parentid", Long.valueOf(partentId));
                 						String createChildDepRes =  HttpClientUtil.sendPost(childParam.toJSONString(), createDepartmentUrl);
                 						System.out.println("createChildDepRes:"+createChildDepRes);
-        							}
+        							}*/
         							
         						}
         							return createDepRes;
@@ -282,7 +281,7 @@ public class ScenetecMailService {
 		
 	}
 	//删除部门信息
-	public void deleteDepartment() {
+	public Map<String, Object> deleteDepartment() {
 		//查询企业邮箱中的所有部门
 		// 获取token
 				Map<String, Object> parameter = new HashMap<String, Object>();
@@ -292,14 +291,58 @@ public class ScenetecMailService {
 				if (!StringUtils.isEmpty(getTokenRes)) {
 					JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
 					String errCode = String.valueOf(getTokenResJson.get("errcode"));
-					String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
 					if ("0".equals(errCode)) {
 						String token = String.valueOf(getTokenResJson.get("access_token"));
-						Map<String, Object> map = deparementAll(token);
+						String departmentListUrl = paramBean.getDepartmentList()+"?access_token="+token;
+						String departmentListRes = HttpClientUtil.sendGet(null, departmentListUrl);
+						if(!StringUtils.isEmpty(departmentListRes)) {
+							JSONObject departmentListResJson = JSONObject.parseObject(departmentListRes);
+							String errorCode = String.valueOf(departmentListResJson.get("errcode"));
+							if("0".equals(errorCode)) {
+								//所有机构列表
+								JSONArray jsonArray = JSONArray.parseArray(String.valueOf(departmentListResJson.get("department")));
+								if(jsonArray!=null&&jsonArray.size()>0) {
+									for (Object object : jsonArray) {
+										Map<String, Department> map = new HashMap<String, Department>();
+										JSONObject jsonObject = JSONObject.parseObject(String.valueOf(object));
+										//parameter.put(String.valueOf(jsonObject.get("name")), jsonObject.get("id"));
+										String parentId = String.valueOf(jsonObject.getString("parentid"));
+										if("0".equals(parentId)) {
+											Department department = new Department();
+											department.setName(String.valueOf(jsonObject.getString("name")));
+											String id = (String.valueOf(jsonObject.getString("id")));
+											map.put(id, department);
+										}else {
+										//	Department department = getDeparement(jsonObject, map);
+											//System.out.println(department);
+										}
+									}
+								}
+							}
+						}
 					}
 				}
-		
+		return null;
 	}
+	
+	//组装部门数据
+	public static List<Department> getDeparement( Map<String, Department> map,Department dep) {
+
+		for (Map.Entry<String, Department> entry : map.entrySet()) {
+			String key = entry.getKey();
+			Department department = entry.getValue();
+			if(key.equals("0")) {
+				//department
+			}else {
+				List<Department> list = getDeparement(map,department);
+				department.setChildrenDepartment(list);
+			}
+		}
+		
+		return null;
+	}
+	
+	
 	//获取企业邮箱中的所有部门
 	public Map<String, Object> deparementAll(String token) {
 		//获取服务列表
@@ -321,5 +364,23 @@ public class ScenetecMailService {
 			}
 		}
 		return parameter;
+	}
+	
+	public static void main(String[] args) {
+		String str = "[{\"name\":\"厦门信钛科技有限公司\",\"id\":5755537439999919806,\"parentid\":0,\"order\":1340016318},{\"name\":\"厦门帝网信息科技有限公司\",\"id\":5755537439999919845,\"parentid\":5755537439999919806,\"order\":0},{\"name\":\"测试部门\",\"id\":5755537439999919858,\"parentid\":5755537439999919806,\"order\":0},{\"name\":\"测试新建部门\",\"id\":5755537439999919862,\"parentid\":5755537439999919806,\"order\":0},{\"name\":\"text1\",\"id\":5755537439999919867,\"parentid\":5755537439999919806,\"order\":0},{\"name\":\"text2\",\"id\":5755537439999919868,\"parentid\":5755537439999919806,\"order\":0},{\"name\":\"测试\",\"id\":5755537439999919869,\"parentid\":5755537439999919806,\"order\":0},{\"name\":\"产品研发部\",\"id\":5755537439999919846,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"董事会办公室\",\"id\":5755537439999919847,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"经营管理层\",\"id\":5755537439999919848,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"人力资源部\",\"id\":5755537439999919849,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"财务部\",\"id\":5755537439999919850,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"综合管理部\",\"id\":5755537439999919851,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"渠道部\",\"id\":5755537439999919852,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"运营部\",\"id\":5755537439999919853,\"parentid\":5755537439999919845,\"order\":0},{\"name\":\"下一集\",\"id\":5755537439999919870,\"parentid\":5755537439999919869,\"order\":0}]";
+        JSONArray jsonArray = JSONArray.parseArray(str);
+        List<Map<String, Department>> list = new ArrayList<Map<String, Department>>();
+        Map<String, Department> map = new HashMap<String, Department>();
+        for (Object object : jsonArray) {
+			JSONObject jsonObject = JSONObject.parseObject(String.valueOf(object));
+			String parentId = (String.valueOf(jsonObject.getString("parentid")));
+			Department department = new Department();
+			department.setId(String.valueOf(jsonObject.getString("id")));
+			department.setName(String.valueOf(jsonObject.getString("name")));
+			department.setParentId(parentId);
+			map.put(parentId, department);
+			//list.add(map);
+		}
+        System.out.println(map);
 	}
 }
