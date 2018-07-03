@@ -7,15 +7,15 @@ import java.util.Map;
 
 import javax.naming.NamingException;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.scenetec.email.bean.ParamBean;
+import com.scenetec.email.po.Department;
 import com.scenetec.email.po.EmailInfo;
-import com.scenetec.email.po.Person;
 import com.scenetec.email.util.HttpClientUtil;
 import com.scenetec.email.util.LDAPAuthentication;
 
@@ -24,55 +24,109 @@ public class ScenetecMailService {
 
 	@Autowired
 	private ParamBean paramBean;
+	
 	public List<EmailInfo> getLadpData(){
 		List<EmailInfo> info = new ArrayList<EmailInfo>();
 		LDAPAuthentication ldap = new LDAPAuthentication();
 		try {
-			ldap.search();
+			List<EmailInfo> emailInfoList = ldap.search();
+			List<String> ladpUserList = new ArrayList<String>();
+			/*for (EmailInfo emailInfo : emailInfoList) {
+				//机构信息
+				List<Department> department = emailInfo.getDepartmentMap();
+				//先处理部门数据
+				scenetecMailDepartment(department);
+				//处理成员信息
+				scenetecMailPerson(emailInfo);
+				//删除成员信息
+				Map<String, Object> map = emailInfo.getMap();
+				ladpUserList.add(String.valueOf(map.get("cn"))+"@scenetec.com");
+				//删除机构信息
+			}
+			//删除成员信息
+			deleteUserInfo(ladpUserList);*/
+			deleteDepartment();
 		} catch (NamingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return info;
 	}
 	//同步机构
-	public String scenetecMailDepartment() {
-		 //获取token
-		Map<String, Object> parameter = new HashMap<String, Object>();
-		parameter.put("corpid", paramBean.getCorpid());
-		parameter.put("corpsecret", paramBean.getCorpsecret());
-		String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
-		if(!StringUtils.isEmpty(getTokenRes)) {
-			JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
-			String errCode = String.valueOf(getTokenResJson.get("errcode"));
-			String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
-			if("0".equals(errCode)) {
-				String token = String.valueOf(getTokenResJson.get("access_token"));
-				//调用创建部门服务
-				String createDepartmentUrl = paramBean.getDepartmentCreate()+"?access_token="+token;
-				JSONObject param = new JSONObject();
-				/*param.put("name", name);
-				param.put("parentid", Long.valueOf(parentid));*/
-				String createDepRes =  HttpClientUtil.sendPost(param.toJSONString(), createDepartmentUrl);
-				if(!StringUtils.isEmpty(createDepRes)) {
-					/*JSONObject createDepResJson = JSONObject.parseObject(createDepRes);	
-					String createDep = String.valueOf(createDepResJson.get("errcode"));
-					if("0".equals(createDep)) {
+	public String scenetecMailDepartment(List<Department> department) {
+		if(department!=null&&department.size()>0) {
+			for (Department department2 : department) {
+				//获取token
+				Map<String, Object> parameter = new HashMap<String, Object>();
+				parameter.put("corpid", paramBean.getCorpid());
+				parameter.put("corpsecret", paramBean.getCorpsecret());
+				String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
+				if(!StringUtils.isEmpty(getTokenRes)) {
+					JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
+					System.out.println("getTokenResJson:"+getTokenResJson);
+					String errCode = String.valueOf(getTokenResJson.get("errcode"));
+					String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
+					if("0".equals(errCode)) {
+						String token = String.valueOf(getTokenResJson.get("access_token"));
+						//查找部门是否存在
+						JSONObject findDep = new JSONObject();
+						findDep.put("name", department2.getName());
+						findDep.put("fuzzy", 0);//精确查找
+						String searchDepartmentUrl = paramBean.getDepartmentSearch()+"?access_token="+token;
+						String searchDepartmentRes = HttpClientUtil.sendPost(findDep.toJSONString(), searchDepartmentUrl);
+						JSONObject searchDepartmentResJson = JSONObject.parseObject(searchDepartmentRes);
+						System.out.println("searchDepartmentResJson:"+searchDepartmentResJson);
+						String searchDepartmentCode = String.valueOf(searchDepartmentResJson.get("errcode"));
+						//返回结果
+                        if("0".equals(searchDepartmentCode)) {
+                        	JSONArray departmentArray = JSONArray.parseArray(String.valueOf(searchDepartmentResJson.get("department")));
+                        	if(departmentArray==null||departmentArray.size()==0) {
+                        		//调用创建部门服务
+        						String createDepartmentUrl = paramBean.getDepartmentCreate()+"?access_token="+token;
+        						JSONObject param = new JSONObject();
+        						param.put("name", department2.getName());
+        						//如果是根部门，设置根部门parentid为1
+        						if(department2.isRoot()) {
+        							param.put("parentid", 1);
+        						}
+        						String createDepRes =  HttpClientUtil.sendPost(param.toJSONString(), createDepartmentUrl);
+        						System.out.println("createDepRes:"+createDepRes);
+        						if(!StringUtils.isEmpty(createDepRes)) {
+        							JSONObject createDepResJson = JSONObject.parseObject(createDepRes);	
+        						String createDep = String.valueOf(createDepResJson.get("errcode"));
+        						if("0".equals(createDep)) {
+        							
+        							//获取创建的父部门id
+        							String partentId = String.valueOf(createDepResJson.get("id"));
+        							//创建子部门
+        							if(department2.getDepartment()!=null) {
+        								JSONObject childParam = new JSONObject();
+            							childParam.put("name", department2.getDepartment().getName());
+                						//如果是根部门，设置根部门parentid为1
+            							childParam.put("parentid", Long.valueOf(partentId));
+                						String createChildDepRes =  HttpClientUtil.sendPost(childParam.toJSONString(), createDepartmentUrl);
+                						System.out.println("createChildDepRes:"+createChildDepRes);
+        							}
+        							
+        						}
+        							return createDepRes;
+        						}
+                        	}
+                        	
+                        }
 						
-					}*/
-					return createDepRes;
+					}else {
+						System.out.println("errorCode:"+errCode+",errorMsg:"+errmsg);
+						return getTokenRes;
+					}
 				}
-			}else {
-				System.out.println("errorCode:"+errCode+",errorMsg:"+errmsg);
-				return getTokenRes;
 			}
+			
 		}
 		 
  		return null;
 	}
 	//同步成员信息
 	public String scenetecMailPerson(EmailInfo emailInfo) {
-		//获取token
 		 //获取token
 		Map<String, Object> parameter = new HashMap<String, Object>();
 		parameter.put("corpid", paramBean.getCorpid());
@@ -86,22 +140,82 @@ public class ScenetecMailService {
 				String token = String.valueOf(getTokenResJson.get("access_token"));
 				//调用创建部门服务
 				String createUserUrl = paramBean.getUserCreate()+"?access_token="+token;
-				JSONObject param = new JSONObject();
-				Person person = emailInfo.getPerson();
-				param.put("userid", person.getUserId());
-				param.put("name", person.getName());
-				param.put("department", person.getDepartment());
-				param.put("position", person.getPosition());
-				param.put("mobile", person.getMobile());
-				param.put("tel", person.getTel());
-				param.put("extid", person.getExtid());
-				param.put("gender", person.getGender());
-				param.put("slaves", person.getSlaves());
-				param.put("password", person.getPassword());
-				param.put("cpwd_login", person.getCpwdLogin());
-				String createUserRes =  HttpClientUtil.sendPost(param.toJSONString(), createUserUrl);
-				if(!StringUtils.isEmpty(createUserRes)) {
-					return createUserRes;
+				
+				//Person person = emailInfo.getPerson();
+				Map<String, Object> map = emailInfo.getMap();
+				//暂时测试写死param.put("userid", map.get("email"));
+				String departMentName = String.valueOf(map.get("memberDepartment"));//成员所在机构名称
+				//查询当前机构的机构号
+				//查找部门是否存在
+				JSONObject findDep = new JSONObject();
+				findDep.put("name", departMentName);
+				findDep.put("fuzzy", 0);//精确查找
+				String searchDepartmentUrl = paramBean.getDepartmentSearch()+"?access_token="+token;
+				String searchDepartmentRes = HttpClientUtil.sendPost(findDep.toJSONString(), searchDepartmentUrl);
+				JSONObject searchDepartmentResJson = JSONObject.parseObject(searchDepartmentRes);
+				System.out.println("searchDepartmentResJson:"+searchDepartmentResJson);
+				String searchDepartmentCode = String.valueOf(searchDepartmentResJson.get("errcode"));
+				if("0".equals(searchDepartmentCode)) {
+					JSONArray departmentArray = JSONArray.parseArray(String.valueOf(searchDepartmentResJson.get("department")));
+					//获取部门
+					if(departmentArray!=null&&departmentArray.size()>0) {
+						JSONObject jsonObject = JSONObject.parseObject(String.valueOf(departmentArray.get(0)));
+						//查询成员是否存在，没有的话创建，有的话更新
+						String userId = map.get("cn")+"@scenetec.com";
+						//调用查询成员服务
+						Map<String, Object> userGetParameter = new HashMap<String, Object>();
+						userGetParameter.put("userid", userId);
+						String userGetUrl = paramBean.getUserGet()+"?access_token="+token;
+						String userGetRes = HttpClientUtil.sendGet(userGetParameter, userGetUrl);
+						if(!StringUtils.isEmpty(userGetRes)) {
+							//获取返回码
+							JSONObject userGetResJson = JSONObject.parseObject(userGetRes);
+							String userGetCode = String.valueOf(userGetResJson.get("errcode"));
+							if("60111".equals(userGetCode)) {
+								//用户不存在，新增用户
+								JSONObject param = new JSONObject();
+								param.put("userid", userId);
+								param.put("name", map.get("sn"));
+								param.put("department", new long[] {Long.valueOf(String.valueOf(jsonObject.get("id")))});
+								param.put("position", map.get("position"));
+								param.put("mobile", map.get("mobile"));
+								param.put("tel", map.get("tel"));
+								param.put("extid", map.get("extid"));
+								param.put("gender", map.get("gender"));
+								param.put("slaves", map.get("slaves"));
+								//param.put("password", map.get("password"));
+								param.put("password", "123456Az@");
+								param.put("cpwd_login", map.get("cpwd_login"));
+								String createUserRes =  HttpClientUtil.sendPost(param.toJSONString(), createUserUrl);
+								System.out.println("createUserRes:"+createUserRes);
+							}if("0".equals(userGetCode)){
+								//存在,更新用户信息
+								JSONObject updateParam = new JSONObject();
+								updateParam.put("userid", userId);
+								updateParam.put("name", map.get("sn"));
+								updateParam.put("department", new long[] {Long.valueOf(String.valueOf(jsonObject.get("id")))});
+								updateParam.put("position", map.get("position"));
+								updateParam.put("mobile", map.get("mobile"));
+								updateParam.put("tel", map.get("tel"));
+								updateParam.put("extid", map.get("extid"));
+								updateParam.put("gender", map.get("gender"));
+								updateParam.put("slaves", map.get("slaves"));
+								//param.put("password", map.get("password"));
+								updateParam.put("cpwd_login", map.get("cpwd_login"));
+								String updateUserUrl = paramBean.getUserUpdate()+"?access_token="+token;
+								String userUpadtRes = HttpClientUtil.sendPost(updateParam.toJSONString(), updateUserUrl);
+								System.out.println("userUpadtRes:"+userUpadtRes);
+							}else {
+								//出现其他异常
+								System.out.println("查询用户异常："+userGetRes);
+							}
+						}
+						
+/*						if(!StringUtils.isEmpty(createUserRes)) {
+							return createUserRes;
+						}*/
+					}
+					
 				}
 			}else {
 				System.out.println("errorCode:"+errCode+",errorMsg:"+errmsg);
@@ -109,4 +223,103 @@ public class ScenetecMailService {
 			}
 	}
 		return null;}
+	//删除成员信息
+	public void deleteUserInfo(List<String> ladpUserList) {
+		 //获取token
+		Map<String, Object> parameter = new HashMap<String, Object>();
+		parameter.put("corpid", paramBean.getCorpid());
+		parameter.put("corpsecret", paramBean.getCorpsecret());
+		String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
+		if(!StringUtils.isEmpty(getTokenRes)) {
+			JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
+			String errCode = String.valueOf(getTokenResJson.get("errcode"));
+			String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
+			if("0".equals(errCode)) {
+				String token = String.valueOf(getTokenResJson.get("access_token"));
+				//获取根部门及以下子部门的所有成员信息
+				Map<String, Object> userSimpleListparameter = new HashMap<String, Object>();
+				userSimpleListparameter.put("department_id", 1);//根目录
+				userSimpleListparameter.put("fetch_child", 1);//递归查询
+				String userSimpleUrl = paramBean.getUserSimpleList()+"?access_token="+token;
+				String userSimpleRes = HttpClientUtil.sendGet(userSimpleListparameter, userSimpleUrl);
+				System.out.println("userSimpleRes:"+userSimpleRes);
+				if(!StringUtils.isEmpty(userSimpleRes)) {
+					JSONObject userSimpleResJson = JSONObject.parseObject(userSimpleRes);
+					String userSimpleErrCode = String.valueOf(userSimpleResJson.get("errcode"));
+					//等于0表示成功
+					if("0".equals(userSimpleErrCode)) {
+						JSONArray jsonArray = JSONArray.parseArray(String.valueOf(userSimpleResJson.get("userlist")));//成员列表
+						if(jsonArray!=null&&jsonArray.size()>0) {
+							//获取的企业邮箱中的成员userId列表
+							List<String> emailUserList = new ArrayList<String>();
+							for (Object object : jsonArray) {
+								JSONObject userJsonObject = JSONObject.parseObject(String.valueOf(object));
+								String userId = String.valueOf(userJsonObject.get("userid"));
+								emailUserList.add(userId);
+							}
+							//移除ladp中存在的用户
+							emailUserList.removeAll(ladpUserList);
+							//移除企业邮箱中的系统用户
+							emailUserList.remove(paramBean.getSystemEmail());
+							//emailUserList中剩余的用户为待删除用户
+							for (String string : emailUserList) {
+								//调用删除成员服务
+								Map<String, Object> userDeleteparameter = new HashMap<String, Object>();
+								userDeleteparameter.put("userid", string);
+								String userDeleteUrl = paramBean.getUserDelete()+"?access_token="+token;
+								String userDeleteRes = HttpClientUtil.sendGet(userDeleteparameter, userDeleteUrl);
+								System.out.println("userDeleteRes:"+userDeleteRes);
+							}
+						}
+					}else {
+						//失败
+						System.out.println("查询成员信息失败："+userSimpleRes);
+					}
+				}
+			}
+		}
+		
+		
+	}
+	//删除部门信息
+	public void deleteDepartment() {
+		//查询企业邮箱中的所有部门
+		// 获取token
+				Map<String, Object> parameter = new HashMap<String, Object>();
+				parameter.put("corpid", paramBean.getCorpid());
+				parameter.put("corpsecret", paramBean.getCorpsecret());
+				String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
+				if (!StringUtils.isEmpty(getTokenRes)) {
+					JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
+					String errCode = String.valueOf(getTokenResJson.get("errcode"));
+					String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
+					if ("0".equals(errCode)) {
+						String token = String.valueOf(getTokenResJson.get("access_token"));
+						Map<String, Object> map = deparementAll(token);
+					}
+				}
+		
+	}
+	//获取企业邮箱中的所有部门
+	public Map<String, Object> deparementAll(String token) {
+		//获取服务列表
+		Map<String, Object> parameter = new HashMap<String, Object>();
+		//parameter.put("id", id);
+		String departmentListUrl = paramBean.getDepartmentList()+"?access_token="+token;
+		String departmentListRes = HttpClientUtil.sendGet(parameter, departmentListUrl);
+		if(!StringUtils.isEmpty(departmentListRes)) {
+			JSONObject departmentListResJson = JSONObject.parseObject(departmentListRes);
+			String errorCode = String.valueOf(departmentListResJson.get("errcode"));
+			if("0".equals(errorCode)) {
+				JSONArray jsonArray = JSONArray.parseArray(String.valueOf("department"));
+				if(jsonArray!=null&&jsonArray.size()>0) {
+					for (Object object : jsonArray) {
+						JSONObject jsonObject = JSONObject.parseObject(String.valueOf(object));
+						parameter.put(String.valueOf(jsonObject.get("name")), jsonObject.get("id"));
+					}
+				}
+			}
+		}
+		return parameter;
+	}
 }
