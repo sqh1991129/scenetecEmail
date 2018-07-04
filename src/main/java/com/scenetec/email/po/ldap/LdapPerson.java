@@ -15,6 +15,15 @@ public class LdapPerson {
     // 手机号
     private String mobile;
 
+    public String getDepartmentName() {
+        if (departments != null && departments.size() > 0) {
+            return departments.get(0);
+        }
+        return null;
+    }
+
+    public boolean needAdd = false;
+
     public String getCn() {
         return cn;
     }
@@ -53,5 +62,17 @@ public class LdapPerson {
 
     public void setMobile(String mobile) {
         this.mobile = mobile;
+    }
+
+    @Override
+    public String toString() {
+        return "LdapPerson{" +
+                "departments=" + departments +
+                ", cn='" + cn + '\'' +
+                ", sn='" + sn + '\'' +
+                ", email='" + email + '\'' +
+                ", mobile='" + mobile + '\'' +
+                ", needAdd=" + needAdd +
+                '}';
     }
 }

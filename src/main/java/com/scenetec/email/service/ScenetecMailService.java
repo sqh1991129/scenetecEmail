@@ -104,7 +104,7 @@ public class ScenetecMailService {
 		JSONObject param = new JSONObject();
 		String userId = ldapPerson.getCn() + "@scenetec.com";
 		param.put("userid", userId);
-		param.put("name", ldapPerson.getSn() == null ? ldapPerson.getCn() : ldapPerson.getCn());
+		param.put("name", ldapPerson.getSn());
 		// 人员部门信息
 		List<String> dppartments = ldapPerson.getDepartments();
 		if (dppartments != null && dppartments.size() > 0) {
@@ -112,7 +112,7 @@ public class ScenetecMailService {
 			param.put("department", new long[] { Long.valueOf(String.valueOf(departmet.getId())) });
 		}
 		param.put("mobile", ldapPerson.getMobile());
-		param.put("password", "123456Az@");
+		param.put("password", "Xintai1234");
 		String createUserUrl = paramBean.getUserCreate() + "?access_token=" + getToken();
 		String createUserRes = HttpClientUtil.sendPost(param.toJSONString(), createUserUrl);
 		System.out.println("createUserRes:" + createUserRes);

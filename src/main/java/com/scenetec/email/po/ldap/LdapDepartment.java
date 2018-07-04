@@ -58,4 +58,13 @@ public class LdapDepartment {
     public void setNeedAdd(boolean needAdd) {
         this.needAdd = needAdd;
     }
+
+    @Override
+    public String toString() {
+        return "LdapDepartment{" +
+                "name='" + name + '\'' +
+                ", parentName='" + parentName + '\'' +
+                ", needAdd=" + needAdd +
+                '}';
+    }
 }
