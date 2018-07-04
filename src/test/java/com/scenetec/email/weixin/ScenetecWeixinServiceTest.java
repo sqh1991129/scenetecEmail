@@ -1,7 +1,7 @@
 package com.scenetec.email.weixin;
 
 import com.scenetec.email.po.weixin.WeixinDepartment;
-import com.scenetec.email.po.weixin.WeixinMemberAdd;
+import com.scenetec.email.po.weixin.WeixinMember;
 import com.scenetec.email.service.ScenetecWeixinService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,7 +23,7 @@ public class ScenetecWeixinServiceTest {
     public void createUser() {
         List<Integer> departmentList = new ArrayList<>();
         departmentList.add(1340016318);
-        WeixinMemberAdd member = new WeixinMemberAdd("zhangsan02", "张三02", "18610023804", "zhangsan_001@scenetec.com", departmentList);
+        WeixinMember member = new WeixinMember("zhangsan02", "张三02", "18610023804", "zhangsan_001@scenetec.com", departmentList);
         scenetecWeixinService.createUser(member);
     }
 

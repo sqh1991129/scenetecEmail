@@ -5,7 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.scenetec.email.exception.WeixinRequestException;
 import com.scenetec.email.po.weixin.WeixinDepartment;
-import com.scenetec.email.po.weixin.WeixinMemberAdd;
+import com.scenetec.email.po.weixin.WeixinMember;
 import com.scenetec.email.po.weixin.WeixinMemberSearchResult;
 import com.scenetec.email.po.weixin.WeixinMemberUpdate;
 import com.scenetec.email.util.HttpClientUtil;
@@ -51,7 +51,7 @@ public class ScenetecWeixinService {
     @Resource
     private AccessTokenManager accessTokenManager;
 
-    public void createUser(WeixinMemberAdd weixinMember) {
+    public void createUser(WeixinMember weixinMember) {
 
         String jsonParam = JSON.toJSONString(weixinMember);
 
@@ -66,7 +66,7 @@ public class ScenetecWeixinService {
         checkException(resultJson);
     }
 
-    public List<WeixinMemberSearchResult> searchUser(Integer rootDepartmentId) {
+    public List<WeixinMember> searchUser(Integer rootDepartmentId) {
         String url = searchUserURLTemp.replace("DEPARTMENT_ID", rootDepartmentId+"").replace("FETCH_CHILD", "1");
         String resultJson = HttpClientUtil.sendGet(null, getURL(url, accessTokenManager.getToken(addresslistSecret).getToken()));
         checkException(resultJson);
@@ -74,12 +74,15 @@ public class ScenetecWeixinService {
         if (JSONObject.parseObject(resultJson).get("userlist") != null) {
             List<JSONObject> jsonObjects =  ( List<JSONObject>) JSONObject.parseObject(resultJson).get("userlist");
 
-            List<WeixinMemberSearchResult> weixinMemberAdds = new ArrayList<>();
+            List<WeixinMember> weixinMemberAdds = new ArrayList<>();
 
             for (JSONObject jsonObject: jsonObjects) {
-                WeixinMemberSearchResult sr = new WeixinMemberSearchResult();
+                WeixinMember sr = new WeixinMember();
                 sr.setName(jsonObject.getString("name"));
                 sr.setUserid(jsonObject.getString("userid"));
+                sr.setMobile(jsonObject.getString("mobile"));
+                sr.setEmail(jsonObject.getString("email"));
+
                 JSONArray jsonArray = (JSONArray) jsonObject.get("department");
                 List<Integer> departments = new ArrayList<>();
                 for (int i=0; i < jsonArray.size(); i++) {
@@ -94,10 +97,10 @@ public class ScenetecWeixinService {
         return null;
     }
 
-    public void updateUser(WeixinMemberUpdate weixinMemberUpdate) {
+    public void updateUser(WeixinMember weixinMember) {
 
         String url = updateUserURLTemp;
-        String resultJson = HttpClientUtil.sendPost(JSON.toJSONString(weixinMemberUpdate), getURL(url, accessTokenManager.getToken(addresslistSecret).getToken()));
+        String resultJson = HttpClientUtil.sendPost(JSON.toJSONString(weixinMember), getURL(url, accessTokenManager.getToken(addresslistSecret).getToken()));
         checkException(resultJson);
     }
 

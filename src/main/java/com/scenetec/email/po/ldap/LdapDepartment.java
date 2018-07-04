@@ -7,10 +7,10 @@ public class LdapDepartment {
     private String name;
 
     private String parentName;
+
+    private boolean needAdd = false;
     
     private String parentId;
-
-    private boolean needAdd;
 
     public String getName() {
         return name;
@@ -28,15 +28,11 @@ public class LdapDepartment {
         this.parentName = parentName;
     }
 
-    public String getParentId() {
-		return parentId;
-	}
+    public boolean isRoot() {
+        return parentName == null;
+    }
 
-	public void setParentId(String parentId) {
-		this.parentId = parentId;
-	}
-
-	@Override
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -67,4 +63,14 @@ public class LdapDepartment {
                 ", needAdd=" + needAdd +
                 '}';
     }
+
+	public String getParentId() {
+		return parentId;
+	}
+
+	public void setParentId(String parentId) {
+		this.parentId = parentId;
+	}
+    
+    
 }

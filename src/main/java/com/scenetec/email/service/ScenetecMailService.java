@@ -7,7 +7,10 @@ import java.util.Map;
 
 import javax.naming.NamingException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -22,14 +25,17 @@ import com.scenetec.email.util.HttpClientUtil;
 
 @Component
 public class ScenetecMailService {
+	
+	private static Logger logger = LoggerFactory.getLogger(ScenetecMailService.class);
 
 	@Autowired
 	private ParamBean paramBean;
 	@Autowired
 	private LdapManager ldap;
 
-	public List<EmailInfo> getLadpData() {
-		List<EmailInfo> info = new ArrayList<EmailInfo>();
+    @Scheduled(fixedRate = 3600000)
+	public void getLadpData() {
+    	logger.info("---调用同步企业邮箱服务开始---");
 		// LdapManager ldap = new LdapManager();
 		try {
 			// ladp人员信息
@@ -42,6 +48,8 @@ public class ScenetecMailService {
 			List<LdapDepartment> addList = operDate(ldapDepartmentList, departmentMap);
 			// 新增机构
 			scenetecMailDepartment(addList);
+			//梳理人员机构信息，防止同一个人存在多个部门的请求
+			
 			// 人员信息
 			scenetecMailPerson(ldapPersonList);
 			// 获取待删除人员列表
@@ -52,10 +60,10 @@ public class ScenetecMailService {
 			List<Department> deleteDepartmentList = getDeleteDepartment(ldapDepartmentList,departmentMap);
 			//删除部门
 			deleteDepartment(deleteDepartmentList);
+			logger.info("---调用同步企业邮箱服务结束---");
 		} catch (NamingException e) {
 			e.printStackTrace();
 		}
-		return info;
 	}
 
 	// 同步机构
@@ -79,6 +87,7 @@ public class ScenetecMailService {
 								param.put("parentid", Long.valueOf(parentId));
 								String createDepRes = HttpClientUtil.sendPost(param.toJSONString(), createDepartmentUrl);
 								System.out.println("createDepRes:" + createDepRes);
+								logger.info("创建邮箱部门入参："+param.toJSONString()+",结果："+createDepRes);
 								addList.remove(i);
 								JSONObject json = JSONObject.parseObject(createDepRes);
 								departmentIdMap.put(ldapDepartment.getName(), json.getString("id"));
@@ -124,7 +133,7 @@ public class ScenetecMailService {
 		String userId = ldapPerson.getCn() + "@scenetec.com";
 		JSONObject updateParam = new JSONObject();
 		updateParam.put("userid", userId);
-		updateParam.put("name", ldapPerson.getSn() == null ? ldapPerson.getCn() : ldapPerson.getCn());
+		updateParam.put("name", ldapPerson.getSn());
 		List<String> dppartments = ldapPerson.getDepartments();
 		if (dppartments != null && dppartments.size() > 0) {
 			Department departmet = departmentMap.get(dppartments.get(0));
@@ -133,7 +142,7 @@ public class ScenetecMailService {
 		updateParam.put("mobile", ldapPerson.getMobile());
 		String updateUserUrl = paramBean.getUserUpdate() + "?access_token=" + getToken();
 		String userUpadtRes = HttpClientUtil.sendPost(updateParam.toJSONString(), updateUserUrl);
-		System.out.println("userUpadtRes:" + userUpadtRes);
+		logger.info("更新邮箱人员信息入参："+updateParam.toJSONString()+",更新结果："+userUpadtRes);
 	}
 
 	// 同步成员信息
@@ -166,8 +175,6 @@ public class ScenetecMailService {
 			if ("0".equals(errCode)) {
 				String token = String.valueOf(getTokenResJson.get("access_token"));
 				// 获取服务列表
-				// Map<String, Object> departmentParameter = new HashMap<String, Object>();
-				// parameter.put("id", id);
 				String departmentListUrl = paramBean.getDepartmentList() + "?access_token=" + token;
 				String departmentListRes = HttpClientUtil.sendGet(null, departmentListUrl);
 				if (!StringUtils.isEmpty(departmentListRes)) {
@@ -218,7 +225,7 @@ public class ScenetecMailService {
 				}
 			} else {
 				// 失败
-				System.out.println("查询成员信息失败：" + userSimpleRes);
+				logger.error("更新成员信息失败："+userSimpleRes);
 			}
 		}
 		return null;
@@ -233,19 +240,17 @@ public class ScenetecMailService {
 		}
 		//
 		emailUserList.removeAll(ldapUserList);
+		
 		// 系统邮箱
-		List<String> systemEmailList = new ArrayList<String>();
+		List<String> systemEmailList = paramBean.getSystemEmail();
+/*		List<String> systemEmailList = new ArrayList<String>();
 		systemEmailList.add("admin@scenetec.com");
 		systemEmailList.add("confluence@scenetec.com");
 		systemEmailList.add("crowd@scenetec.com");
 		systemEmailList.add("jira@scenetec.com");
-		systemEmailList.add("wangqing@scenetec.com");
-		systemEmailList.add("luoxianjun@scenetec.com");
-		systemEmailList.add("wangqing@scenetec.com");
 		systemEmailList.add("wechat-service@scenetec.com");
 		systemEmailList.add("wechat-subscription@scenetec.com");
-		systemEmailList.add("wechat-subscription@scenetec.com");
-		systemEmailList.add("yangyongchao@scenetec.com");
+		systemEmailList.add("wechat-subscription@scenetec.com");*/
 		emailUserList.removeAll(systemEmailList);
 		return emailUserList;
 	}
@@ -318,7 +323,7 @@ public class ScenetecMailService {
 			for (String userId : deleteUserList) {
 				String deleteUserUrl = paramBean.getUserDelete() + "?access_token=" + getToken() + "&userid=" + userId;
 				String deleteUserRes = HttpClientUtil.sendGet(null, deleteUserUrl);
-				System.out.println("deleteUserRes:" + deleteUserRes);
+				logger.info("删除成员服务入参：userid="+userId+",结果为："+deleteUserRes);
 			}
 		}
 	}
@@ -327,9 +332,12 @@ public class ScenetecMailService {
 	public void deleteDepartment(List<Department> deleteDepartmentList) {
 	  if(deleteDepartmentList!=null&&deleteDepartmentList.size()>0) {
 		for (Department department : deleteDepartmentList) {
-			String deleteDepartmentUrl = paramBean.getDepartmentDelete()+"?access_token=" + getToken() + "&userid=" + department.getId();
+			if(!"0".equals(department.getParentId())) {
+			String deleteDepartmentUrl = paramBean.getDepartmentDelete()+"?access_token=" + getToken() + "&id=" + department.getId();
 			String deleteDepartmentRes = HttpClientUtil.sendGet(null, deleteDepartmentUrl);
-            System.out.println("deleteDepartmentRes:"+deleteDepartmentRes);
+           // System.out.println("deleteDepartmentRes:"+deleteDepartmentRes);
+            logger.info("删除部门入参为：userid="+department.getId()+",结果为："+deleteDepartmentRes);
+			}
 		 }
     	}	
 	}
@@ -355,18 +363,5 @@ public class ScenetecMailService {
 		}
 
 		return false;
-	}
-
-	public static void main(String[] args) {
-		ArrayList<String> a1 = new ArrayList<String>();
-		a1.add("a");
-		a1.add("b");
-		a1.add("c");
-		ArrayList<String> a2 = new ArrayList<String>();
-		a2.add("a");
-		a2.add("b");
-		a2.add("d");
-		a2.removeAll(a1);
-		System.out.println(a2);
 	}
 }

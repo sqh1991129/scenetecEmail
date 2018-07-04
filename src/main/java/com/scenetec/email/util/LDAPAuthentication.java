@@ -16,7 +16,7 @@ import com.scenetec.email.po.Department;
 import com.scenetec.email.po.EmailInfo;
 
 public class LDAPAuthentication {
-    private final String URL = "ldap://154.8.178.194:389/";
+    private final String URL = "ldap://132.232.16.89:389/";
     private final String BASEDN = "dc=scenetec,dc=com";  // 根据自己情况进行修改
     private final String FACTORY = "com.sun.jndi.ldap.LdapCtxFactory";
     private LdapContext ctx = null;

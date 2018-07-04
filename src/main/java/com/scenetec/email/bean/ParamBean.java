@@ -34,6 +34,7 @@ public class ParamBean {
 	@Value("${email.user.simplelist}")
 	private String userSimpleList;
 	
+	@Value("${email.system.email}")
 	private String systemEmail;
 	public String getCorpid() {
 		return corpid;
