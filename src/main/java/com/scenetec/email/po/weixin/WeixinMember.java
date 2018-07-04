@@ -11,7 +11,7 @@ import java.util.List;
  * @author bejson.com (i@bejson.com)
  * @website http://www.bejson.com/java2pojo/
  */
-public class WeixinMemberAdd {
+public class WeixinMember {
 
     private String userid;
     private String name;
@@ -23,14 +23,35 @@ public class WeixinMemberAdd {
     private String gender;
     private String email;
     private int isleader;
-    private int enable;
+    private int enable = 1;
     private String avatar_mediaid;
     private String telephone;
     private Extattr extattr;
     private boolean to_invite;
     private External_profile external_profile;
 
-    public WeixinMemberAdd(String userid, String name, String mobile, String email, List<Integer> department ){
+    private boolean needDelete;
+    private boolean needUpdate;
+
+    public boolean isNeedDelete() {
+        return needDelete;
+    }
+
+    public void setNeedDelete(boolean needDelete) {
+        this.needDelete = needDelete;
+    }
+
+    public boolean isNeedUpdate() {
+        return needUpdate;
+    }
+
+    public void setNeedUpdate(boolean needUpdate) {
+        this.needUpdate = needUpdate;
+    }
+
+    public WeixinMember(){}
+
+    public WeixinMember(String userid, String name, String mobile, String email, List<Integer> department ){
         this.userid = userid;
         this.name = name;
         this.department = department;
