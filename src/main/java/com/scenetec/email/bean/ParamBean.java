@@ -23,13 +23,15 @@ public class ParamBean {
 	private String departmentSearch;
 	@Value("${email.department.list}")
 	private String departmentList;
+	@Value("${email.department.delete}")
+	private String departmentDelete;
 	@Value("${email.user.get}")
 	private String userGet;//获取用户信息
 	@Value("${email.user.update}")
 	private String userUpdate;//更新用户信息
 	@Value("${email.user.delete}")
 	private String userDelete;//删除用户信息
-	@Value("email.user.simplelist")
+	@Value("${email.user.simplelist}")
 	private String userSimpleList;
 	
 	private String systemEmail;
@@ -112,6 +114,12 @@ public class ParamBean {
 	}
 	public void setDepartmentList(String departmentList) {
 		this.departmentList = departmentList;
+	}
+	public String getDepartmentDelete() {
+		return departmentDelete;
+	}
+	public void setDepartmentDelete(String departmentDelete) {
+		this.departmentDelete = departmentDelete;
 	}
 
 }
