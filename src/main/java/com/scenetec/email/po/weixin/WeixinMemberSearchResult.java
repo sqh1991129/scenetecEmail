@@ -53,4 +53,15 @@ public class WeixinMemberSearchResult {
     public void setNeedUpdate(boolean needUpdate) {
         this.needUpdate = needUpdate;
     }
+
+    @Override
+    public String toString() {
+        return "WeixinMemberSearchResult{" +
+                "userid='" + userid + '\'' +
+                ", name='" + name + '\'' +
+                ", department=" + department +
+                ", needDelete=" + needDelete +
+                ", needUpdate=" + needUpdate +
+                '}';
+    }
 }

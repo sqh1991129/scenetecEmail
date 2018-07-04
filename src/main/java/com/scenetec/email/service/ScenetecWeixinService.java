@@ -7,7 +7,10 @@ import com.scenetec.email.exception.WeixinRequestException;
 import com.scenetec.email.po.weixin.WeixinDepartment;
 import com.scenetec.email.po.weixin.WeixinMemberAdd;
 import com.scenetec.email.po.weixin.WeixinMemberSearchResult;
+import com.scenetec.email.po.weixin.WeixinMemberUpdate;
 import com.scenetec.email.util.HttpClientUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -43,6 +46,8 @@ public class ScenetecWeixinService {
     @Value("${workWeixin.addresslist.secret}")
     private String addresslistSecret;
 
+    private Logger logger = LoggerFactory.getLogger(ScenetecWeixinService.class);
+
     @Resource
     private AccessTokenManager accessTokenManager;
 
@@ -56,7 +61,7 @@ public class ScenetecWeixinService {
     }
 
     public void deleteUser(String userId) {
-        String url = deleteDepartmentURLTemp.replace("USERID", userId);
+        String url = deleteUserURLTemp.replace("USERID", userId);
         String resultJson = HttpClientUtil.sendGet(null, getURL(url, accessTokenManager.getToken(addresslistSecret).getToken()));
         checkException(resultJson);
     }
@@ -89,10 +94,10 @@ public class ScenetecWeixinService {
         return null;
     }
 
-    public void updateUser(WeixinMemberSearchResult weixinMemberSearchResult) {
+    public void updateUser(WeixinMemberUpdate weixinMemberUpdate) {
 
         String url = updateUserURLTemp;
-        String resultJson = HttpClientUtil.sendPost(JSON.toJSONString(weixinMemberSearchResult), getURL(url, accessTokenManager.getToken(addresslistSecret).getToken()));
+        String resultJson = HttpClientUtil.sendPost(JSON.toJSONString(weixinMemberUpdate), getURL(url, accessTokenManager.getToken(addresslistSecret).getToken()));
         checkException(resultJson);
     }
 
@@ -134,6 +139,13 @@ public class ScenetecWeixinService {
         checkException(resultJson);
     }
 
+    public void deleteDepartment(String departmentId) {
+
+        String url = deleteDepartmentURLTemp.replace("ID",departmentId);
+        String resultJson = HttpClientUtil.sendGet(null, getURL(url, accessTokenManager.getToken(addresslistSecret).getToken()));
+        checkException(resultJson);
+    }
+
     private void checkException (String resultJson) {
         if (StringUtils.isEmpty(resultJson)) {
             throw new WeixinRequestException("无返回");
@@ -142,6 +154,8 @@ public class ScenetecWeixinService {
         String errcode = JSONObject.parseObject(resultJson).getString("errcode");
         String errmsg = JSONObject.parseObject(resultJson).getString("errmsg");
         if (!errcode.equals("0")) {
+            errmsg = "错误码： " + errcode + "，错误信息: "+ errmsg;
+            logger.error(errmsg);
             throw new WeixinRequestException(errmsg);
         }
 

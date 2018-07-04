@@ -18,4 +18,8 @@ public class SyncLdapToWeixinServiceTest {
         syncLdapToWeixinService.syncDepartment();
     }
 
+    @Test
+    public void testSyncMember() {
+        syncLdapToWeixinService.syncMember();
+    }
 }

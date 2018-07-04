@@ -10,7 +10,7 @@ public class WeixinDepartment {
 
     private Integer order;
 
-    private boolean needDelete = false;
+    private boolean needDelete = true;
 
     public Integer getId() {
         return id;
@@ -50,5 +50,16 @@ public class WeixinDepartment {
 
     public void setNeedDelete(boolean needDelete) {
         this.needDelete = needDelete;
+    }
+
+    @Override
+    public String toString() {
+        return "WeixinDepartment{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", parentid=" + parentid +
+                ", order=" + order +
+                ", needDelete=" + needDelete +
+                '}';
     }
 }

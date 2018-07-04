@@ -1,11 +1,8 @@
 package com.scenetec.email.service;
 
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Map;
 
 import javax.naming.*;
 import javax.naming.directory.*;
@@ -14,7 +11,6 @@ import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 
 import com.scenetec.email.po.Department;
-import com.scenetec.email.po.EmailInfo;
 import com.scenetec.email.po.ldap.LdapDepartment;
 import com.scenetec.email.po.ldap.LdapPerson;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +24,7 @@ public class LdapManager {
     private String BASEDN;  // 根据自己情况进行修改
     @Value("${ldap.password}")
     private String password;
-    @Value("cn=admin,dc=scenetec,dc=com")
+    @Value("${ldap.admin}")
     private String root;
     private final String FACTORY = "com.sun.jndi.ldap.LdapCtxFactory";
     private LdapContext ctx = null;
@@ -102,9 +98,13 @@ public class LdapManager {
                     String mobile = (String) attribute.get();
                     ldapPerson.setMobile(mobile);
                 }
-                if (attrId.equals("email")) {
+                if (attrId.equals("mail")) {
                     String email = (String) attribute.get();
                     ldapPerson.setEmail(email);
+                }
+                if (attrId.equals("sn")) {
+                    String sn = (String) attribute.get();
+                    ldapPerson.setSn(sn);
                 }
 
             } catch (NamingException e) {
