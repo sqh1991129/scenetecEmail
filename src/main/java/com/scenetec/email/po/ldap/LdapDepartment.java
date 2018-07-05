@@ -9,6 +9,8 @@ public class LdapDepartment {
     private String parentName;
 
     private boolean needAdd = false;
+    
+    private String parentId;
 
     public String getName() {
         return name;
@@ -61,4 +63,14 @@ public class LdapDepartment {
                 ", needAdd=" + needAdd +
                 '}';
     }
+
+	public String getParentId() {
+		return parentId;
+	}
+
+	public void setParentId(String parentId) {
+		this.parentId = parentId;
+	}
+    
+    
 }

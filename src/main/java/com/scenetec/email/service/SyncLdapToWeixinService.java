@@ -66,6 +66,7 @@ public class SyncLdapToWeixinService {
                     weixinDepartment.setNeedDelete(false);
                 }
             }
+
             // 同步增加部门
             syncAddDepartment(ldapDepartments, rootWeixinDepartment, weixinDepartmentMap, ldapDepartmentMap);
             // 删除增加部门

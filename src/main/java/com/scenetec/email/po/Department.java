@@ -4,6 +4,7 @@ import java.util.List;
 
 public class Department {
 
+	private String id;
 	private String name;//部门名称
 	private String parentId;//父部门id。id为1可表示根部门
 	private String order;//在父部门中的次序值。order值小的排序靠前，1-10000为保留值，若使用保留值，将被强制重置为0
@@ -27,6 +28,12 @@ public class Department {
 	}
 	public void setOrder(String order) {
 		this.order = order;
+	}
+	public String getId() {
+		return id;
+	}
+	public void setId(String id) {
+		this.id = id;
 	}
 	public String getParmentName() {
 		return parmentName;
