@@ -30,8 +30,8 @@ public class WeixinMember {
     private boolean to_invite;
     private External_profile external_profile;
 
-    private boolean needDelete;
-    private boolean needUpdate;
+    private boolean needDelete = true;
+    private boolean needUpdate = false;
 
     public boolean isNeedDelete() {
         return needDelete;
@@ -174,5 +174,29 @@ public class WeixinMember {
 
     public boolean isTo_invite() {
         return to_invite;
+    }
+
+    @Override
+    public String toString() {
+        return "WeixinMember{" +
+                "userid='" + userid + '\'' +
+                ", name='" + name + '\'' +
+                ", english_name='" + english_name + '\'' +
+                ", mobile='" + mobile + '\'' +
+                ", department=" + department +
+                ", order=" + order +
+                ", position='" + position + '\'' +
+                ", gender='" + gender + '\'' +
+                ", email='" + email + '\'' +
+                ", isleader=" + isleader +
+                ", enable=" + enable +
+                ", avatar_mediaid='" + avatar_mediaid + '\'' +
+                ", telephone='" + telephone + '\'' +
+                ", extattr=" + extattr +
+                ", to_invite=" + to_invite +
+                ", external_profile=" + external_profile +
+                ", needDelete=" + needDelete +
+                ", needUpdate=" + needUpdate +
+                '}';
     }
 }

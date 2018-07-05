@@ -10,6 +10,7 @@ import javax.naming.ldap.Control;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 
+import com.scenetec.email.exception.LdapConnectErrorException;
 import com.scenetec.email.po.Department;
 import com.scenetec.email.po.ldap.LdapDepartment;
 import com.scenetec.email.po.ldap.LdapPerson;
@@ -39,8 +40,8 @@ public class LdapManager {
         NamingEnumeration en = null;
         try {
             en = ctx.search("", "uid=*", constraints);
-        } catch (NamingException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            throw new LdapConnectErrorException("ldap 连接失败");
         }
         while (en != null && en.hasMoreElements()) {
             Object obj = en.nextElement();

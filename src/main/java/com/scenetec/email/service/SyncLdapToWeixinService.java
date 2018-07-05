@@ -31,7 +31,7 @@ public class SyncLdapToWeixinService {
     @Resource
     private ScenetecWeixinService scenetecWeixinService;
 
-    @Scheduled(fixedRate = 7200000)
+    @Scheduled(fixedRate = 7200000, initialDelay = 20000)
     public void syncWeixin(){
         syncDepartment();
         syncMember();
@@ -109,6 +109,30 @@ public class SyncLdapToWeixinService {
                     isNeedUpdate(person, weixinMember, weixinDepartmentMap);
                 }
             }
+
+            // 执行变更和删除用户
+            for (WeixinMember weixinMember: weixinMemberSearchResults) {
+                if (weixinMember.isNeedUpdate()) {
+                    try {
+                        scenetecWeixinService.updateUser(weixinMember);
+                        logger.info("更新用户成功: " + weixinMember.toString());
+                    }catch (Exception e){
+                        logger.info("更新用户失败: " + weixinMember.toString());
+                        e.printStackTrace();
+                    }
+
+                }
+                if (weixinMember.isNeedDelete()) {
+                    try {
+                        scenetecWeixinService.deleteUser(weixinMember.getUserid());
+                        logger.info("删除用户成功: " + weixinMember.toString());
+                    }catch (Exception e){
+                        logger.info("删除用户失败: " + weixinMember.toString());
+                        e.printStackTrace();
+                    }
+
+                }
+            }
             // 执行增加用户
             for (LdapPerson person: ldapPeopleList) {
                 if (person.needAdd) {
@@ -139,29 +163,6 @@ public class SyncLdapToWeixinService {
                     }
                 }
             }
-            // 执行变更和删除用户
-            for (WeixinMember weixinMember: weixinMemberSearchResults) {
-                if (weixinMember.isNeedUpdate()) {
-                    try {
-                        scenetecWeixinService.updateUser(weixinMember);
-                        logger.info("更新用户成功: " + weixinMember.toString());
-                    }catch (Exception e){
-                        logger.info("更新用户失败: " + weixinMember.toString());
-                        e.printStackTrace();
-                    }
-
-                }
-                if (weixinMember.isNeedDelete()) {
-                    try {
-                        scenetecWeixinService.deleteUser(weixinMember.getUserid());
-                        logger.info("删除用户成功: " + weixinMember.toString());
-                    }catch (Exception e){
-                        logger.info("删除用户失败: " + weixinMember.toString());
-                        e.printStackTrace();
-                    }
-
-                }
-            }
 
         } catch (NamingException e) {
             e.printStackTrace();
@@ -178,17 +179,11 @@ public class SyncLdapToWeixinService {
             return;
         }
 
-        if (person.getCn().equals(weixinMember.getUserid())
-                && person.getMobile().equals(weixinMember.getMobile())
-                && person.getSn().equals(weixinMember.getName())
-                && person.getEmail().equals(weixinMember.getEmail())
-                && ldapDepartment.getId().equals(weixinMember.getDepartment().get(0))) {
+        if ( ldapDepartment.getId().equals(weixinMember.getDepartment().get(0))) {
             weixinMember.setNeedUpdate(false);
         }else {
             weixinMember.setNeedUpdate(true);
-            weixinMember.setName(person.getSn());
-            weixinMember.setEmail(person.getEmail());
-            weixinMember.setMobile(person.getMobile());
+
             List<Integer> depts = new ArrayList<>();
             depts.add(ldapDepartment.getId());
             weixinMember.setDepartment(depts);
