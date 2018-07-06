@@ -14,8 +14,11 @@ import com.scenetec.email.exception.LdapConnectErrorException;
 import com.scenetec.email.po.Department;
 import com.scenetec.email.po.ldap.LdapDepartment;
 import com.scenetec.email.po.ldap.LdapPerson;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 @Component
 public class LdapManager {
@@ -31,9 +34,12 @@ public class LdapManager {
     private LdapContext ctx = null;
     private final Control[] connCtls = null;
 
-    public List<LdapPerson> search() throws NamingException {
+    private final Logger logger = LoggerFactory.getLogger(LdapManager.class);
 
-        List<LdapPerson> ldapPeopleList = new ArrayList<LdapPerson>();
+
+    public List<LdapPerson> search(){
+
+        List<LdapPerson> ldapPeopleList = new ArrayList<>();
         LDAP_connect();
         SearchControls constraints = new SearchControls();
         constraints.setSearchScope(SearchControls.SUBTREE_SCOPE);
@@ -50,7 +56,15 @@ public class LdapManager {
                 ldapPeopleList.add(parseFromSi(si));
             }
         }
-        ctx.close();
+        try {
+            ctx.close();
+        } catch (NamingException e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
+        }
+        if (CollectionUtils.isEmpty(ldapPeopleList)) {
+            throw new LdapConnectErrorException("无法获取ldap信息");
+        }
         return ldapPeopleList;
     }
 

@@ -37,33 +37,31 @@ public class ScenetecMailService {
 	public void getLadpData() {
     	logger.info("---调用同步企业邮箱服务开始---");
 		// LdapManager ldap = new LdapManager();
-		try {
-			// ladp人员信息
-			List<LdapPerson> ldapPersonList = ldap.search();
-			// 机构信息
-			List<LdapDepartment> ldapDepartmentList = ldap.getDepartmentTreeFromPerson(ldapPersonList);
-			// 获取企业邮箱机构信息
-			Map<String, Department> departmentMap = deparementAll();
-			// 调用机构比较方法
-			List<LdapDepartment> addList = operDate(ldapDepartmentList, departmentMap);
-			// 新增机构
-			scenetecMailDepartment(addList);
-			//梳理人员机构信息，防止同一个人存在多个部门的请求
-			
-			// 人员信息
-			scenetecMailPerson(ldapPersonList);
-			// 获取待删除人员列表
-			List<String> deleteUserList = getDeleteUserList(ldapPersonList);
-			//删除人员
-			deleteUser(deleteUserList);
-			//获取待删除部门列表
-			List<Department> deleteDepartmentList = getDeleteDepartment(ldapDepartmentList,departmentMap);
-			//删除部门
-			deleteDepartment(deleteDepartmentList);
-			logger.info("---调用同步企业邮箱服务结束---");
-		} catch (NamingException e) {
-			e.printStackTrace();
-		}
+
+		// ladp人员信息
+		List<LdapPerson> ldapPersonList = ldap.search();
+		// 机构信息
+		List<LdapDepartment> ldapDepartmentList = ldap.getDepartmentTreeFromPerson(ldapPersonList);
+		// 获取企业邮箱机构信息
+		Map<String, Department> departmentMap = deparementAll();
+		// 调用机构比较方法
+		List<LdapDepartment> addList = operDate(ldapDepartmentList, departmentMap);
+		// 新增机构
+		scenetecMailDepartment(addList);
+		//梳理人员机构信息，防止同一个人存在多个部门的请求
+
+		// 人员信息
+		scenetecMailPerson(ldapPersonList);
+		// 获取待删除人员列表
+		List<String> deleteUserList = getDeleteUserList(ldapPersonList);
+		//删除人员
+		deleteUser(deleteUserList);
+		//获取待删除部门列表
+		List<Department> deleteDepartmentList = getDeleteDepartment(ldapDepartmentList,departmentMap);
+		//删除部门
+		deleteDepartment(deleteDepartmentList);
+		logger.info("---调用同步企业邮箱服务结束---");
+
 	}
 
 	// 同步机构

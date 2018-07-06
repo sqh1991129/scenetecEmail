@@ -38,136 +38,129 @@ public class SyncLdapToWeixinService {
     }
 
     public void syncDepartment() {
-        try {
-            // 获取ldap里的所有用户
-            List<LdapPerson> ldapPeopleList = ldapManager.search();
-            if (ldapPeopleList == null) {
-                return;
-            }
-            // 根据用户获取所有的ldap里的部门
-            List<LdapDepartment> ldapDepartments = ldapManager.getDepartmentTreeFromPerson(ldapPeopleList);
-            // 查询企业微信里的所有的部门
-            List<WeixinDepartment> weixinDepartments = scenetecWeixinService.getDepartments(null);
-            // 获取企业微信里的跟部门-即厦门帝网公司
-            WeixinDepartment rootWeixinDepartment = getWeixinDepartmentRoot(weixinDepartments);
-            // 将部门转换成 {"部门名称", 部门对象} 的结构
-            Map<String, WeixinDepartment> weixinDepartmentMap = weixinDepartments.stream().collect(Collectors.toMap(WeixinDepartment::getName, item->item));
-            Map<String, LdapDepartment> ldapDepartmentMap = ldapDepartments.stream().collect(Collectors.toMap(LdapDepartment::getName, item->item));
 
-            for (LdapDepartment ldapDepartment: ldapDepartments) {
-                String ldapDepartmentName = ldapDepartment.getName();
-                WeixinDepartment weixinDepartment = weixinDepartmentMap.get(ldapDepartmentName);
-                // ldap中存在 企业微信中不存在的 需要新增
-                if (weixinDepartment == null) {
-                    // 需要新增
-                    ldapDepartment.setNeedAdd(true);
-                }else {
-                    // 否则删除
-                    weixinDepartment.setNeedDelete(false);
-                }
-            }
-
-            // 同步增加部门
-            syncAddDepartment(ldapDepartments, rootWeixinDepartment, weixinDepartmentMap, ldapDepartmentMap);
-            // 删除增加部门
-            syncDeleteDepartment(weixinDepartments, rootWeixinDepartment);
-
-        } catch (NamingException e) {
-            e.printStackTrace();
+        // 获取ldap里的所有用户
+        List<LdapPerson> ldapPeopleList = ldapManager.search();
+        if (ldapPeopleList == null) {
+            return;
         }
+        // 根据用户获取所有的ldap里的部门
+        List<LdapDepartment> ldapDepartments = ldapManager.getDepartmentTreeFromPerson(ldapPeopleList);
+        // 查询企业微信里的所有的部门
+        List<WeixinDepartment> weixinDepartments = scenetecWeixinService.getDepartments(null);
+        // 获取企业微信里的跟部门-即厦门帝网公司
+        WeixinDepartment rootWeixinDepartment = getWeixinDepartmentRoot(weixinDepartments);
+        // 将部门转换成 {"部门名称", 部门对象} 的结构
+        Map<String, WeixinDepartment> weixinDepartmentMap = weixinDepartments.stream().collect(Collectors.toMap(WeixinDepartment::getName, item->item));
+        Map<String, LdapDepartment> ldapDepartmentMap = ldapDepartments.stream().collect(Collectors.toMap(LdapDepartment::getName, item->item));
+
+        for (LdapDepartment ldapDepartment: ldapDepartments) {
+            String ldapDepartmentName = ldapDepartment.getName();
+            WeixinDepartment weixinDepartment = weixinDepartmentMap.get(ldapDepartmentName);
+            // ldap中存在 企业微信中不存在的 需要新增
+            if (weixinDepartment == null) {
+                // 需要新增
+                ldapDepartment.setNeedAdd(true);
+            }else {
+                // 否则删除
+                weixinDepartment.setNeedDelete(false);
+            }
+        }
+
+        // 同步增加部门
+        syncAddDepartment(ldapDepartments, rootWeixinDepartment, weixinDepartmentMap, ldapDepartmentMap);
+        // 删除增加部门
+        syncDeleteDepartment(weixinDepartments, rootWeixinDepartment);
+
     }
     /**
      * 同步用户
      */
     public void syncMember() {
 
-        try {
-            // 获取ldap里的所有用户
-            List<LdapPerson> ldapPeopleList = ldapManager.search();
-            if (ldapPeopleList == null) {
-                return;
-            }
-            // 获取企业微信中所有的部门
-            List<WeixinDepartment> weixinDepartments = scenetecWeixinService.getDepartments(null);
-            // 获取企业微信中的根部门
-            WeixinDepartment root = getWeixinDepartmentRoot(weixinDepartments);
-            // 递归查询所有用户，帝网下的
-            List<WeixinMember> weixinMemberSearchResults = scenetecWeixinService.searchUser(root.getId());
-            Map<String, WeixinDepartment> weixinDepartmentMap = weixinDepartments.stream().collect(Collectors.toMap(WeixinDepartment::getName, item->item));
-            Map<String, WeixinMember> weixinMemberSearchResultMap = weixinMemberSearchResults.stream().collect(Collectors.toMap(WeixinMember::getUserid, item->item));
-
-            for (LdapPerson person: ldapPeopleList) {
-                String cn = person.getCn();
-                WeixinMember weixinMember = weixinMemberSearchResultMap.get(cn);
-                // 判断ldap中的用户是否在企业微信里存在
-                if (weixinMember == null) {
-                    // 不存在需要新增
-                    person.needAdd = true;
-                }else {
-                    // 存在不需要删除，默认需要删除
-                    weixinMember.setNeedDelete(false);
-                    // 判断是否需要更新，如果需要更新 设置更新后的值
-                    isNeedUpdate(person, weixinMember, weixinDepartmentMap);
-                }
-            }
-
-            // 执行变更和删除用户
-            for (WeixinMember weixinMember: weixinMemberSearchResults) {
-                if (weixinMember.isNeedUpdate()) {
-                    try {
-                        scenetecWeixinService.updateUser(weixinMember);
-                        logger.info("更新用户成功: " + weixinMember.toString());
-                    }catch (Exception e){
-                        logger.info("更新用户失败: " + weixinMember.toString());
-                        e.printStackTrace();
-                    }
-
-                }
-                if (weixinMember.isNeedDelete()) {
-                    try {
-                        scenetecWeixinService.deleteUser(weixinMember.getUserid());
-                        logger.info("删除用户成功: " + weixinMember.toString());
-                    }catch (Exception e){
-                        logger.info("删除用户失败: " + weixinMember.toString());
-                        e.printStackTrace();
-                    }
-
-                }
-            }
-            // 执行增加用户
-            for (LdapPerson person: ldapPeopleList) {
-                if (person.needAdd) {
-                    String departmentName = person.getDepartmentName();
-                    WeixinDepartment weixinDepartment = weixinDepartmentMap.get(departmentName);
-                    if (weixinDepartment == null) {
-                        logger.info("-----------请检查，部门不同步--------");
-                        logger.info(person.toString());
-                        continue;
-                    }
-                    Integer departmentId = weixinDepartment.getId();
-                    List<Integer> departments = new ArrayList<>();
-                    departments.add(departmentId);
-                    if (StringUtils.isEmpty(person.getCn()) || StringUtils.isEmpty(person.getSn()) || StringUtils.isEmpty(person.getMobile()) || (departments==null || departments.size() == 0)) {
-                        logger.info("-----------校验失败--------");
-                        logger.info(person.toString());
-                        continue;
-                    }
-
-                    WeixinMember weixinMemberAdd = new WeixinMember(person.getCn(), person.getSn(), person.getMobile(), person.getEmail(), departments);
-                    weixinMemberAdd.setEnable(1); // 启用
-                    try {
-                        scenetecWeixinService.createUser(weixinMemberAdd);
-                        logger.info("同步用户成功: " + person.toString());
-                    }catch (Exception e){
-                        logger.info("同步用户失败: " + person.toString());
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-        } catch (NamingException e) {
-            e.printStackTrace();
+        // 获取ldap里的所有用户
+        List<LdapPerson> ldapPeopleList = ldapManager.search();
+        if (ldapPeopleList == null) {
+            return;
         }
+        // 获取企业微信中所有的部门
+        List<WeixinDepartment> weixinDepartments = scenetecWeixinService.getDepartments(null);
+        // 获取企业微信中的根部门
+        WeixinDepartment root = getWeixinDepartmentRoot(weixinDepartments);
+        // 递归查询所有用户，帝网下的
+        List<WeixinMember> weixinMemberSearchResults = scenetecWeixinService.searchUser(root.getId());
+        Map<String, WeixinDepartment> weixinDepartmentMap = weixinDepartments.stream().collect(Collectors.toMap(WeixinDepartment::getName, item->item));
+        Map<String, WeixinMember> weixinMemberSearchResultMap = weixinMemberSearchResults.stream().collect(Collectors.toMap(WeixinMember::getUserid, item->item));
+
+        for (LdapPerson person: ldapPeopleList) {
+            String cn = person.getCn();
+            WeixinMember weixinMember = weixinMemberSearchResultMap.get(cn);
+            // 判断ldap中的用户是否在企业微信里存在
+            if (weixinMember == null) {
+                // 不存在需要新增
+                person.needAdd = true;
+            }else {
+                // 存在不需要删除，默认需要删除
+                weixinMember.setNeedDelete(false);
+                // 判断是否需要更新，如果需要更新 设置更新后的值
+                isNeedUpdate(person, weixinMember, weixinDepartmentMap);
+            }
+        }
+
+        // 执行变更和删除用户
+        for (WeixinMember weixinMember: weixinMemberSearchResults) {
+            if (weixinMember.isNeedUpdate()) {
+                try {
+                    scenetecWeixinService.updateUser(weixinMember);
+                    logger.info("更新用户成功: " + weixinMember.toString());
+                }catch (Exception e){
+                    logger.info("更新用户失败: " + weixinMember.toString());
+                    e.printStackTrace();
+                }
+
+            }
+            if (weixinMember.isNeedDelete()) {
+                try {
+                    scenetecWeixinService.deleteUser(weixinMember.getUserid());
+                    logger.info("删除用户成功: " + weixinMember.toString());
+                }catch (Exception e){
+                    logger.info("删除用户失败: " + weixinMember.toString());
+                    e.printStackTrace();
+                }
+
+            }
+        }
+        // 执行增加用户
+        for (LdapPerson person: ldapPeopleList) {
+            if (person.needAdd) {
+                String departmentName = person.getDepartmentName();
+                WeixinDepartment weixinDepartment = weixinDepartmentMap.get(departmentName);
+                if (weixinDepartment == null) {
+                    logger.info("-----------请检查，部门不同步--------");
+                    logger.info(person.toString());
+                    continue;
+                }
+                Integer departmentId = weixinDepartment.getId();
+                List<Integer> departments = new ArrayList<>();
+                departments.add(departmentId);
+                if (StringUtils.isEmpty(person.getCn()) || StringUtils.isEmpty(person.getSn()) || StringUtils.isEmpty(person.getMobile()) || (departments==null || departments.size() == 0)) {
+                    logger.info("-----------校验失败--------");
+                    logger.info(person.toString());
+                    continue;
+                }
+
+                WeixinMember weixinMemberAdd = new WeixinMember(person.getCn(), person.getSn(), person.getMobile(), person.getEmail(), departments);
+                weixinMemberAdd.setEnable(1); // 启用
+                try {
+                    scenetecWeixinService.createUser(weixinMemberAdd);
+                    logger.info("同步用户成功: " + person.toString());
+                }catch (Exception e){
+                    logger.info("同步用户失败: " + person.toString());
+                    e.printStackTrace();
+                }
+            }
+        }
+
     }
 
     private void isNeedUpdate(LdapPerson person, WeixinMember weixinMember, Map<String, WeixinDepartment> weixinDepartmentMap) {
