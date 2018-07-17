@@ -119,14 +119,17 @@ public class SyncLdapToWeixinService {
                 }
 
             }
-            if (weixinMember.isNeedDelete()) {
+            if (weixinMember.isNeedDelete() ) {
                 try {
-                    weixinMember.setEnable(0);
-                    // 改为禁用
-                    scenetecWeixinService.updateUser(weixinMember);
-                    logger.info("删除用户成功: " + weixinMember.toString());
+                    if (weixinMember.getEnable() == 1) {
+                        weixinMember.setEnable(0);
+                        // 改为禁用
+                        scenetecWeixinService.updateUser(weixinMember);
+                        logger.info("禁用用户成功: " + weixinMember.toString());
+                    }
+
                 }catch (Exception e){
-                    logger.info("删除用户失败: " + weixinMember.toString());
+                    logger.info("禁用用户失败: " + weixinMember.toString());
                     e.printStackTrace();
                 }
 
