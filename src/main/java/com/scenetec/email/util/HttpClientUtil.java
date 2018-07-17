@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -58,10 +59,37 @@ public class HttpClientUtil {
 		}
       return null;
 	}
-	
+	public static String sendEmailPost(String parameter,String url) {
+        StringEntity entity = null;
+        try {
+            HttpClient httpClient = new SSLClient();
+            //logger.info("postUrl:"+url);
+            HttpPost httpPost = new HttpPost(url);
+            httpPost.addHeader("Content-Type", "application/json; charset=UTF-8");
+            entity = new StringEntity(parameter,"UTF-8");
+            httpPost.setEntity(entity);
+            HttpResponse httpResponse = httpClient.execute(httpPost);
+            String res = EntityUtils.toString(httpResponse.getEntity());
+            //logger.info("postRes:"+res);
+            return res;
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClientProtocolException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+             e.printStackTrace();
+        }
+      return null;
+    }
 	public static String sendGet(Map<String, Object> parameter,String url) {
 		CloseableHttpClient httpClient = HttpClients.createDefault();
-		if(!StringUtils.isEmpty(parameter)) {
+	    if(!StringUtils.isEmpty(parameter)) {
 			StringBuffer sb = new StringBuffer(url+"?");
 			for(Map.Entry<String, Object> entry : parameter.entrySet()){
 				sb.append(entry.getKey());
@@ -90,18 +118,56 @@ public class HttpClientUtil {
 		}
 		return null;
 	}
-	public static void main(String[] args) {
-		//id:wm36d93efab695e16a
+	public static String sendEmailGet(Map<String, Object> parameter,String url) {
+        try {
+            HttpClient httpClient = new SSLClient();
+            if(!StringUtils.isEmpty(parameter)) {
+                StringBuffer sb = new StringBuffer(url+"?");
+                for(Map.Entry<String, Object> entry : parameter.entrySet()){
+                    sb.append(entry.getKey());
+                    sb.append("="+entry.getValue());
+                    sb.append("&");
+                }
+                int index = sb.toString().lastIndexOf("&");
+                url = sb.toString().substring(0, index);
+            }
+            //logger.info("getUrl:"+url);
+            HttpGet httpGet = new HttpGet(url);
+            HttpResponse httpResponse = httpClient.execute(httpGet);
+            String res = EntityUtils.toString(httpResponse.getEntity());
+            //logger.info("getRes"+res);
+            return res;
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (ClientProtocolException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+             e.printStackTrace();
+        }
+        return null;
+    }
+	public static void main(String[] args) throws Exception {
+/*		//id:wm36d93efab695e16a
 		//miyue:gtD9ICIQWzgPigI_PJrS3hVmTnCBVC4oPLmbeVfLiNX4vco115vFqAq0CFE2dXEH
 		//String url = "https://api.exmail.qq.com/cgi-bin/gettoken?corpid=id&corpsecret=secrect";
-	/*	String url = "https://api.exmail.qq.com/cgi-bin/department/create?access_token=whil2Fz-ok_JmuC9sbFPEbAcI0g2QwIJem7mNK66JLLQMd_RfwY8iYRkAtMCPkECciC_mLDgcCi8vWMiJrZMcw";
+		String url = "https://api.exmail.qq.com/cgi-bin/department/create?access_token=whil2Fz-ok_JmuC9sbFPEbAcI0g2QwIJem7mNK66JLLQMd_RfwY8iYRkAtMCPkECciC_mLDgcCi8vWMiJrZMcw";
 		JSONObject json = new JSONObject();
 		json.put("name", "测试部门");
 		json.put("parentid", Long.valueOf("1"));
 		json.put("order", 0);
-		System.out.println(sendPost(json.toJSONString(), url));*/
+		System.out.println(sendPost(json.toJSONString(), url));
 	    String str = "{\"userid\":\"admin@scenetec.com\",\"name\":\"邮箱管理员\",\"department\":[5755537439999919806]}";
 	    JSONObject obj = JSONObject.parseObject(str);
 	  //  System.out.println(JSONArray.t(JSONArray)obj.get("department"));
+*/	
+	//for(int i=0;i<10;i++) {
+	    System.out.println(sendGet(null, "https://api.exmail.qq.com/cgi-bin/gettoken?corpid=wm36d93efab695e16a&corpsecret=gtD9ICIQWzgPigI_PJrS3hVmTnCBVC4oPLmbeVfLiNX4vco115vFqAq0CFE2dXEH"));
+	//}    
 	}
 }

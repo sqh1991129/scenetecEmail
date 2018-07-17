@@ -91,7 +91,7 @@ public class ScenetecMailService {
 								JSONObject param = new JSONObject();
 								param.put("name", ldapDepartment.getName());
 								param.put("parentid", Long.valueOf(parentId));
-								String createDepRes = HttpClientUtil.sendPost(param.toJSONString(), createDepartmentUrl);
+								String createDepRes = HttpClientUtil.sendEmailPost(param.toJSONString(), createDepartmentUrl);
 								checkException(createDepRes);
 								JSONObject object = JSONObject.parseObject(createDepRes);
 								String errorCode = String.valueOf(object.get("errcode"));
@@ -139,7 +139,7 @@ public class ScenetecMailService {
 		param.put("mobile", ldapPerson.getMobile());
 		param.put("password", paramBean.getDefaultPwd());
 		String createUserUrl = paramBean.getUserCreate() + "?access_token=" + getToken();
-		String createUserRes = HttpClientUtil.sendPost(param.toJSONString(), createUserUrl);
+		String createUserRes = HttpClientUtil.sendEmailPost(param.toJSONString(), createUserUrl);
 		checkException(createUserRes);
 		logger.info("创建人员入参："+param.toJSONString()+",创建结果:"+createUserRes);
 	}
@@ -165,7 +165,7 @@ public class ScenetecMailService {
 		}
 		updateParam.put("mobile", ldapPerson.getMobile());
 		String updateUserUrl = paramBean.getUserUpdate() + "?access_token=" + getToken();
-		String userUpadtRes = HttpClientUtil.sendPost(updateParam.toJSONString(), updateUserUrl);
+		String userUpadtRes = HttpClientUtil.sendEmailPost(updateParam.toJSONString(), updateUserUrl);
 		checkException(userUpadtRes);
 		logger.info("更新邮箱人员信息入参："+updateParam.toJSONString()+",更新结果："+userUpadtRes);
 	}
@@ -190,7 +190,7 @@ public class ScenetecMailService {
 		
 				// 获取服务列表
 				String departmentListUrl = paramBean.getDepartmentList() + "?access_token=" + getToken();
-				String departmentListRes = HttpClientUtil.sendGet(null, departmentListUrl);
+				String departmentListRes = HttpClientUtil.sendEmailGet(null, departmentListUrl);
 				checkException(departmentListRes);
 				if (!StringUtils.isEmpty(departmentListRes)) {
 					JSONObject departmentListResJson = JSONObject.parseObject(departmentListRes);
@@ -218,7 +218,7 @@ public class ScenetecMailService {
 		// 获取根部门及以下子部门的所有成员信息
 		String userSimpleUrl = paramBean.getUserSimpleList() + "?access_token=" + getToken()
 				+ "&department_id=1&fetch_child=1";
-		String userSimpleRes = HttpClientUtil.sendGet(null, userSimpleUrl);
+		String userSimpleRes = HttpClientUtil.sendEmailGet(null, userSimpleUrl);
 		checkException(userSimpleRes);
 		if (!StringUtils.isEmpty(userSimpleRes)) {
 			JSONObject userSimpleResJson = JSONObject.parseObject(userSimpleRes);
@@ -335,7 +335,7 @@ public class ScenetecMailService {
 	    Map<String, Object> parameter = new HashMap<String, Object>();
         parameter.put("corpid", paramBean.getCorpid());
         parameter.put("corpsecret", paramBean.getCorpsecret());
-        String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
+        String getTokenRes = HttpClientUtil.sendEmailGet(parameter, paramBean.getGetTokenUrl());
         checkException(getTokenRes);
         if (!StringUtils.isEmpty(getTokenRes)) {
             JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
@@ -364,7 +364,7 @@ public class ScenetecMailService {
 			        updateParam.put("userid", userId);
 			        updateParam.put("enable", 0);//禁用
 			        String updateUserUrl = paramBean.getUserUpdate() + "?access_token=" + getToken();
-			        String userUpadtRes = HttpClientUtil.sendPost(updateParam.toJSONString(), updateUserUrl);
+			        String userUpadtRes = HttpClientUtil.sendEmailPost(updateParam.toJSONString(), updateUserUrl);
 			        checkException(userUpadtRes);
 			        logger.info("禁用邮箱人员信息入参："+updateParam.toJSONString()+",禁用结果："+userUpadtRes);
 			}
@@ -387,7 +387,7 @@ public class ScenetecMailService {
 		for (Department department : deleteDepartmentList) {
 			if(!"0".equals(department.getParentId())) {
 			String deleteDepartmentUrl = paramBean.getDepartmentDelete()+"?access_token=" + getToken() + "&id=" + department.getId();
-			String deleteDepartmentRes = HttpClientUtil.sendGet(null, deleteDepartmentUrl);
+			String deleteDepartmentRes = HttpClientUtil.sendEmailGet(null, deleteDepartmentUrl);
 			checkException(deleteDepartmentRes);
            // System.out.println("deleteDepartmentRes:"+deleteDepartmentRes);
             logger.info("删除部门入参为：userid="+department.getId()+",结果为："+deleteDepartmentRes);
