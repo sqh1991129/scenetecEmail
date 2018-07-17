@@ -1,9 +1,11 @@
 package com.scenetec.email.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.naming.NamingException;
 
@@ -19,6 +21,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.scenetec.email.bean.ParamBean;
 import com.scenetec.email.po.Department;
 import com.scenetec.email.po.EmailInfo;
+import com.scenetec.email.po.Person;
 import com.scenetec.email.po.ldap.LdapDepartment;
 import com.scenetec.email.po.ldap.LdapPerson;
 import com.scenetec.email.util.HttpClientUtil;
@@ -32,36 +35,40 @@ public class ScenetecMailService {
 	private ParamBean paramBean;
 	@Autowired
 	private LdapManager ldap;
-
-    @Scheduled(fixedRate = 3600000)
+	
+	private long lastGetTokenTimestamp=0;
+    private String token;
+    private Map<String, Department> departM = new HashMap<String, Department>();
+    private List<Person> emailUserList = null;
+    
+    @Scheduled(fixedRate = 3600000,initialDelay=40000)
 	public void getLadpData() {
     	logger.info("---调用同步企业邮箱服务开始---");
 		// LdapManager ldap = new LdapManager();
-
-		// ladp人员信息
-		List<LdapPerson> ldapPersonList = ldap.search();
-		// 机构信息
-		List<LdapDepartment> ldapDepartmentList = ldap.getDepartmentTreeFromPerson(ldapPersonList);
-		// 获取企业邮箱机构信息
-		Map<String, Department> departmentMap = deparementAll();
-		// 调用机构比较方法
-		List<LdapDepartment> addList = operDate(ldapDepartmentList, departmentMap);
-		// 新增机构
-		scenetecMailDepartment(addList);
-		//梳理人员机构信息，防止同一个人存在多个部门的请求
-
-		// 人员信息
-		scenetecMailPerson(ldapPersonList);
-		// 获取待删除人员列表
-		List<String> deleteUserList = getDeleteUserList(ldapPersonList);
-		//删除人员
-		deleteUser(deleteUserList);
-		//获取待删除部门列表
-		List<Department> deleteDepartmentList = getDeleteDepartment(ldapDepartmentList,departmentMap);
-		//删除部门
-		deleteDepartment(deleteDepartmentList);
-		logger.info("---调用同步企业邮箱服务结束---");
-
+			// ladp人员信息
+			List<LdapPerson> ldapPersonList = ldap.search();
+			// 机构信息
+			List<LdapDepartment> ldapDepartmentList = ldap.getDepartmentTreeFromPerson(ldapPersonList);
+			// 获取企业邮箱机构信息
+			Map<String, Department> departmentMap = deparementAll();
+			// 调用机构比较方法
+			List<LdapDepartment> addList = operDate(ldapDepartmentList, departmentMap);
+			// 新增机构
+			scenetecMailDepartment(addList);
+			//梳理人员机构信息，防止同一个人存在多个部门的请求
+			//邮箱中所有用户
+			getEmailAllUser();
+			// 人员信息
+			scenetecMailPerson(ldapPersonList);
+			// 获取待删除人员列表
+			List<String> deleteUserList = getDeleteUserList(ldapPersonList);
+			//删除人员
+			deleteUser(deleteUserList);
+			//获取待删除部门列表
+			List<Department> deleteDepartmentList = getDeleteDepartment(ldapDepartmentList,departmentMap);
+			//删除部门
+			deleteDepartment(deleteDepartmentList);
+			logger.info("---调用同步企业邮箱服务结束---");	
 	}
 
 	// 同步机构
@@ -84,7 +91,15 @@ public class ScenetecMailService {
 								param.put("name", ldapDepartment.getName());
 								param.put("parentid", Long.valueOf(parentId));
 								String createDepRes = HttpClientUtil.sendPost(param.toJSONString(), createDepartmentUrl);
-								System.out.println("createDepRes:" + createDepRes);
+								JSONObject object = JSONObject.parseObject(createDepRes);
+								String errorCode = String.valueOf(object.get("errcode"));
+								if("0".equals(errorCode)) {
+								   // departM.put(key, value)
+								    Department depart = new Department();
+								    depart.setId(String.valueOf(object.get("id")));
+								    depart.setName(ldapDepartment.getName());
+								    departM.put(ldapDepartment.getName(), depart);
+								}
 								logger.info("创建邮箱部门入参："+param.toJSONString()+",结果："+createDepRes);
 								addList.remove(i);
 								JSONObject json = JSONObject.parseObject(createDepRes);
@@ -106,10 +121,11 @@ public class ScenetecMailService {
 	// 新增成员
 	public void addUser(LdapPerson ldapPerson) {
 		// 获取所有机构
-		Map<String, Department> departmentMap = deparementAll();
+		//Map<String, Department> departmentMap = deparementAll();
+	    Map<String, Department> departmentMap = departM;
 		// 创建人员
 		JSONObject param = new JSONObject();
-		String userId = ldapPerson.getCn() + "@scenetec.com";
+		String userId = ldapPerson.getCn();
 		param.put("userid", userId);
 		param.put("name", ldapPerson.getSn());
 		// 人员部门信息
@@ -119,16 +135,23 @@ public class ScenetecMailService {
 			param.put("department", new long[] { Long.valueOf(String.valueOf(departmet.getId())) });
 		}
 		param.put("mobile", ldapPerson.getMobile());
-		param.put("password", "Xintai1234");
+		param.put("password", paramBean.getDefaultPwd());
 		String createUserUrl = paramBean.getUserCreate() + "?access_token=" + getToken();
 		String createUserRes = HttpClientUtil.sendPost(param.toJSONString(), createUserUrl);
-		System.out.println("createUserRes:" + createUserRes);
+		logger.info("创建人员入参："+param.toJSONString()+",创建结果:"+createUserRes);
 	}
 
 	// 更新成员信息
 	public void updateUser(LdapPerson ldapPerson) {
-		Map<String, Department> departmentMap = deparementAll();
-		String userId = ldapPerson.getCn() + "@scenetec.com";
+	    Map<String, Department> departmentMap = departM;
+        String userId = ldapPerson.getCn();
+        // 调用查询成员服务
+        Map<String, Person> emailPersons = emailUserList.stream().collect(Collectors.toMap(Person::getUserId, person->person));
+	    if(equealObj(ldapPerson,emailPersons.get(userId))) {
+	        return;
+	    }
+		//Map<String, Department> departmentMap = deparementAll();
+	   
 		JSONObject updateParam = new JSONObject();
 		updateParam.put("userid", userId);
 		updateParam.put("name", ldapPerson.getSn());
@@ -147,8 +170,8 @@ public class ScenetecMailService {
 	public void scenetecMailPerson(List<LdapPerson> ldapPersonList) {
 
 		for (LdapPerson ldapPerson : ldapPersonList) {
-			String userId = ldapPerson.getCn() + "@scenetec.com";
-			if (isExitUser(userId)) {
+			//String userId = ldapPerson.getCn() + "@scenetec.com";
+			if (isExitUser(ldapPerson)) {
 				// 更新成员信息
 				updateUser(ldapPerson);
 			} else {
@@ -160,20 +183,9 @@ public class ScenetecMailService {
 	}
 	// 获取企业邮箱中的所有部门
 	public Map<String, Department> deparementAll() {
-		Map<String, Department> departM = new HashMap<String, Department>();
-		// 获取token
-		Map<String, Object> parameter = new HashMap<String, Object>();
-		parameter.put("corpid", paramBean.getCorpid());
-		parameter.put("corpsecret", paramBean.getCorpsecret());
-		String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
-		if (!StringUtils.isEmpty(getTokenRes)) {
-			JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
-			String errCode = String.valueOf(getTokenResJson.get("errcode"));
-			String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
-			if ("0".equals(errCode)) {
-				String token = String.valueOf(getTokenResJson.get("access_token"));
+		
 				// 获取服务列表
-				String departmentListUrl = paramBean.getDepartmentList() + "?access_token=" + token;
+				String departmentListUrl = paramBean.getDepartmentList() + "?access_token=" + getToken();
 				String departmentListRes = HttpClientUtil.sendGet(null, departmentListUrl);
 				if (!StringUtils.isEmpty(departmentListRes)) {
 					JSONObject departmentListResJson = JSONObject.parseObject(departmentListRes);
@@ -193,18 +205,15 @@ public class ScenetecMailService {
 						}
 					}
 				}
-			}
-		}
 		return departM;
 	}
 
 	// 获取企业邮箱中的所有成员
-	public List<String> getEmailAllUser() {
+	public List<Person> getEmailAllUser() {
 		// 获取根部门及以下子部门的所有成员信息
 		String userSimpleUrl = paramBean.getUserSimpleList() + "?access_token=" + getToken()
 				+ "&department_id=1&fetch_child=1";
 		String userSimpleRes = HttpClientUtil.sendGet(null, userSimpleUrl);
-		System.out.println("userSimpleRes:" + userSimpleRes);
 		if (!StringUtils.isEmpty(userSimpleRes)) {
 			JSONObject userSimpleResJson = JSONObject.parseObject(userSimpleRes);
 			String userSimpleErrCode = String.valueOf(userSimpleResJson.get("errcode"));
@@ -213,11 +222,23 @@ public class ScenetecMailService {
 				JSONArray jsonArray = JSONArray.parseArray(String.valueOf(userSimpleResJson.get("userlist")));// 成员列表
 				if (jsonArray != null && jsonArray.size() > 0) {
 					// 获取的企业邮箱中的成员userId列表
-					List<String> emailUserList = new ArrayList<String>();
+					emailUserList = new ArrayList<Person>();
 					for (Object object : jsonArray) {
 						JSONObject userJsonObject = JSONObject.parseObject(String.valueOf(object));
 						String userId = String.valueOf(userJsonObject.get("userid"));
-						emailUserList.add(userId);
+						Person person = new Person();
+						person.setUserId(userId);
+						person.setName(String.valueOf(userJsonObject.get("name")));
+						person.setMobile(String.valueOf(userJsonObject.get("mobile")));
+						List<String> list = new ArrayList<String>();
+						JSONArray array = (JSONArray)userJsonObject.get("department");
+						for (Object object2 : array) {
+                            list.add(String.valueOf(object2));
+                        }
+						person.setDepartment(list);
+						person.setEnable(String.valueOf(userJsonObject.get("enable")));
+						//person.setDepartment(JSONArray.parse(String.valueOf(userJsonObject.get("department"))).);
+						emailUserList.add(person);
 					}
 					return emailUserList;
 				}
@@ -231,26 +252,18 @@ public class ScenetecMailService {
 
 	// 待删除用户
 	public List<String> getDeleteUserList(List<LdapPerson> ldapPersonList) {
-		List<String> emailUserList = getEmailAllUser();
+		List<String> emailUserIdList = emailUserList.stream().map(Person::getUserId).collect(Collectors.toList());
 		List<String> ldapUserList = new ArrayList<String>();
 		for (LdapPerson ldapPerson : ldapPersonList) {
-			ldapUserList.add(ldapPerson.getCn() + "@scenetec.com");
+			ldapUserList.add(ldapPerson.getCn());
 		}
 		//
-		emailUserList.removeAll(ldapUserList);
+		emailUserIdList.removeAll(ldapUserList);
 		
 		// 系统邮箱
 		List<String> systemEmailList = paramBean.getSystemEmail();
-/*		List<String> systemEmailList = new ArrayList<String>();
-		systemEmailList.add("admin@scenetec.com");
-		systemEmailList.add("confluence@scenetec.com");
-		systemEmailList.add("crowd@scenetec.com");
-		systemEmailList.add("jira@scenetec.com");
-		systemEmailList.add("wechat-service@scenetec.com");
-		systemEmailList.add("wechat-subscription@scenetec.com");
-		systemEmailList.add("wechat-subscription@scenetec.com");*/
-		emailUserList.removeAll(systemEmailList);
-		return emailUserList;
+		emailUserIdList.removeAll(systemEmailList);
+		return emailUserIdList;
 	}
 
 	// 比较
@@ -299,33 +312,72 @@ public class ScenetecMailService {
 	}
 	//获取token
 	public String getToken() {
-		Map<String, Object> parameter = new HashMap<String, Object>();
-		parameter.put("corpid", paramBean.getCorpid());
-		parameter.put("corpsecret", paramBean.getCorpsecret());
-		String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
-		String token = null;
-		if (!StringUtils.isEmpty(getTokenRes)) {
-			JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
-			String errCode = String.valueOf(getTokenResJson.get("errcode"));
-			String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
-			if ("0".equals(errCode)) {
-				token = String.valueOf(getTokenResJson.get("access_token"));
-			}
-		}
+	   
+	    if(lastGetTokenTimestamp==0) {
+	        getEmailToken();
+	    }else {
+	        //判断token是否实效
+	        if(tokenExpired()) {
+	            getEmailToken(); 
+	        }
+	    }
+		
 		return token;
 	}
-
+ //获取token
+	public void getEmailToken() {
+	    Map<String, Object> parameter = new HashMap<String, Object>();
+        parameter.put("corpid", paramBean.getCorpid());
+        parameter.put("corpsecret", paramBean.getCorpsecret());
+        String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
+        
+        if (!StringUtils.isEmpty(getTokenRes)) {
+            JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
+            String errCode = String.valueOf(getTokenResJson.get("errcode"));
+            String errmsg = String.valueOf(getTokenResJson.get("errmsg"));
+            if ("0".equals(errCode)) {
+                token = String.valueOf(getTokenResJson.get("access_token"));
+                lastGetTokenTimestamp = System.currentTimeMillis();
+            }
+        }
+	}
+    /***
+     * @return token是否已经失效
+     */
+    public boolean tokenExpired() {
+        return System.currentTimeMillis() - lastGetTokenTimestamp > 7200*1000;
+    }
 	// 删除成员服务
 	public void deleteUser(List<String> deleteUserList) {
 		if (deleteUserList != null && deleteUserList.size() > 0) {
 			for (String userId : deleteUserList) {
-				String deleteUserUrl = paramBean.getUserDelete() + "?access_token=" + getToken() + "&userid=" + userId;
+			    //删除成员该为禁用
+				/*String deleteUserUrl = paramBean.getUserDelete() + "?access_token=" + getToken() + "&userid=" + userId;
 				String deleteUserRes = HttpClientUtil.sendGet(null, deleteUserUrl);
-				logger.info("删除成员服务入参：userid="+userId+",结果为："+deleteUserRes);
+				logger.info("删除成员服务入参：userid="+userId+",结果为："+deleteUserRes);*/
+			    if(isEnable(userId)) {
+			        return;
+			    }
+			       JSONObject updateParam = new JSONObject();
+			        updateParam.put("userid", userId);
+			        updateParam.put("enable", 0);//禁用
+			        String updateUserUrl = paramBean.getUserUpdate() + "?access_token=" + getToken();
+			        String userUpadtRes = HttpClientUtil.sendPost(updateParam.toJSONString(), updateUserUrl);
+			        logger.info("禁用邮箱人员信息入参："+updateParam.toJSONString()+",禁用结果："+userUpadtRes);
 			}
 		}
 	}
 
+	//判断用户状态是否是禁用，如果不是则禁用
+	public boolean isEnable(String userId) {
+	       Map<String, Person> emailPersons = emailUserList.stream().collect(Collectors.toMap(Person::getUserId, person->person));
+           Person person = emailPersons.get(userId);
+           String enable = person.getEnable();
+           if("0".equals(enable)) {
+               return true;
+           }
+	    return false;
+	}
 	//删除部门服务
 	public void deleteDepartment(List<Department> deleteDepartmentList) {
 	  if(deleteDepartmentList!=null&&deleteDepartmentList.size()>0) {
@@ -340,9 +392,24 @@ public class ScenetecMailService {
     	}	
 	}
 	// 获取成员是否存在
-	public boolean isExitUser(String userId) {
+	public boolean isExitUser(LdapPerson ldapPerson) {
+	    String userId = ldapPerson.getCn() + "@scenetec.com";
+	    ldapPerson.setCn(userId);
 		// 调用查询成员服务
-		String userGetUrl = paramBean.getUserGet() + "?access_token=" + getToken() + "&userid=" + userId;
+	    Map<String, Person> emailPersons = emailUserList.stream().collect(Collectors.toMap(Person::getUserId, person->person));
+		if(emailPersons.containsKey(userId)) {
+		    //包含，判断值是否一样
+		    /*Person person = emailPersons.get(userId);
+		    if(equealObj(ldapPerson,person)) {
+		        return true;
+		    }else {
+		        return false;
+		    }*/
+		    return true;
+		}else {
+		    return false;
+		}
+	    /*String userGetUrl = paramBean.getUserGet() + "?access_token=" + getToken() + "&userid=" + userId;
 		try {
 			String userGetRes = HttpClientUtil.sendGet(null, userGetUrl);
 			if (!StringUtils.isEmpty(userGetRes)) {
@@ -358,8 +425,18 @@ public class ScenetecMailService {
 			}
 		} catch (Exception e) {
 			return false;
-		}
+		}*/
 
-		return false;
+	}
+	
+	//比较对象是否相等
+	public boolean equealObj(LdapPerson ldapPerson,Person person) {
+	    if(ldapPerson.getCn().equals(person.getUserId())&&ldapPerson.getSn().equals(person.getName())&&
+	        ldapPerson.getMobile().equals(person.getMobile())&&departM.get(ldapPerson.getDepartments().get(0)).getId().equals(person.getDepartment().get(0))
+	        ) {
+	        return true;
+	    }else {
+	        return false;
+	    }
 	}
 }

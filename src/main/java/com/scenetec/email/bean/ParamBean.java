@@ -36,6 +36,8 @@ public class ParamBean {
 	
 	@Value("${email.system.email}")
 	private String systemEmail;
+	@Value("${email.default.pwd}")
+	private String defaultPwd;//邮箱默认密码
 	public String getCorpid() {
 		return corpid;
 	}
@@ -121,6 +123,12 @@ public class ParamBean {
 	}
 	public void setDepartmentDelete(String departmentDelete) {
 		this.departmentDelete = departmentDelete;
+	}
+	public String getDefaultPwd() {
+		return defaultPwd;
+	}
+	public void setDefaultPwd(String defaultPwd) {
+		this.defaultPwd = defaultPwd;
 	}
 
 }
