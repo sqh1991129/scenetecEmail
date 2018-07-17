@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.scenetec.email.bean.ParamBean;
+import com.scenetec.email.exception.WeixinRequestException;
 import com.scenetec.email.po.Department;
 import com.scenetec.email.po.EmailInfo;
 import com.scenetec.email.po.Person;
@@ -91,6 +92,7 @@ public class ScenetecMailService {
 								param.put("name", ldapDepartment.getName());
 								param.put("parentid", Long.valueOf(parentId));
 								String createDepRes = HttpClientUtil.sendPost(param.toJSONString(), createDepartmentUrl);
+								checkException(createDepRes);
 								JSONObject object = JSONObject.parseObject(createDepRes);
 								String errorCode = String.valueOf(object.get("errcode"));
 								if("0".equals(errorCode)) {
@@ -138,6 +140,7 @@ public class ScenetecMailService {
 		param.put("password", paramBean.getDefaultPwd());
 		String createUserUrl = paramBean.getUserCreate() + "?access_token=" + getToken();
 		String createUserRes = HttpClientUtil.sendPost(param.toJSONString(), createUserUrl);
+		checkException(createUserRes);
 		logger.info("创建人员入参："+param.toJSONString()+",创建结果:"+createUserRes);
 	}
 
@@ -163,6 +166,7 @@ public class ScenetecMailService {
 		updateParam.put("mobile", ldapPerson.getMobile());
 		String updateUserUrl = paramBean.getUserUpdate() + "?access_token=" + getToken();
 		String userUpadtRes = HttpClientUtil.sendPost(updateParam.toJSONString(), updateUserUrl);
+		checkException(userUpadtRes);
 		logger.info("更新邮箱人员信息入参："+updateParam.toJSONString()+",更新结果："+userUpadtRes);
 	}
 
@@ -187,6 +191,7 @@ public class ScenetecMailService {
 				// 获取服务列表
 				String departmentListUrl = paramBean.getDepartmentList() + "?access_token=" + getToken();
 				String departmentListRes = HttpClientUtil.sendGet(null, departmentListUrl);
+				checkException(departmentListRes);
 				if (!StringUtils.isEmpty(departmentListRes)) {
 					JSONObject departmentListResJson = JSONObject.parseObject(departmentListRes);
 					String errorCode = String.valueOf(departmentListResJson.get("errcode"));
@@ -214,6 +219,7 @@ public class ScenetecMailService {
 		String userSimpleUrl = paramBean.getUserSimpleList() + "?access_token=" + getToken()
 				+ "&department_id=1&fetch_child=1";
 		String userSimpleRes = HttpClientUtil.sendGet(null, userSimpleUrl);
+		checkException(userSimpleRes);
 		if (!StringUtils.isEmpty(userSimpleRes)) {
 			JSONObject userSimpleResJson = JSONObject.parseObject(userSimpleRes);
 			String userSimpleErrCode = String.valueOf(userSimpleResJson.get("errcode"));
@@ -330,7 +336,7 @@ public class ScenetecMailService {
         parameter.put("corpid", paramBean.getCorpid());
         parameter.put("corpsecret", paramBean.getCorpsecret());
         String getTokenRes = HttpClientUtil.sendGet(parameter, paramBean.getGetTokenUrl());
-        
+        checkException(getTokenRes);
         if (!StringUtils.isEmpty(getTokenRes)) {
             JSONObject getTokenResJson = JSONObject.parseObject(getTokenRes);
             String errCode = String.valueOf(getTokenResJson.get("errcode"));
@@ -351,10 +357,6 @@ public class ScenetecMailService {
 	public void deleteUser(List<String> deleteUserList) {
 		if (deleteUserList != null && deleteUserList.size() > 0) {
 			for (String userId : deleteUserList) {
-			    //删除成员该为禁用
-				/*String deleteUserUrl = paramBean.getUserDelete() + "?access_token=" + getToken() + "&userid=" + userId;
-				String deleteUserRes = HttpClientUtil.sendGet(null, deleteUserUrl);
-				logger.info("删除成员服务入参：userid="+userId+",结果为："+deleteUserRes);*/
 			    if(isEnable(userId)) {
 			        return;
 			    }
@@ -363,6 +365,7 @@ public class ScenetecMailService {
 			        updateParam.put("enable", 0);//禁用
 			        String updateUserUrl = paramBean.getUserUpdate() + "?access_token=" + getToken();
 			        String userUpadtRes = HttpClientUtil.sendPost(updateParam.toJSONString(), updateUserUrl);
+			        checkException(userUpadtRes);
 			        logger.info("禁用邮箱人员信息入参："+updateParam.toJSONString()+",禁用结果："+userUpadtRes);
 			}
 		}
@@ -385,6 +388,7 @@ public class ScenetecMailService {
 			if(!"0".equals(department.getParentId())) {
 			String deleteDepartmentUrl = paramBean.getDepartmentDelete()+"?access_token=" + getToken() + "&id=" + department.getId();
 			String deleteDepartmentRes = HttpClientUtil.sendGet(null, deleteDepartmentUrl);
+			checkException(deleteDepartmentRes);
            // System.out.println("deleteDepartmentRes:"+deleteDepartmentRes);
             logger.info("删除部门入参为：userid="+department.getId()+",结果为："+deleteDepartmentRes);
 			}
@@ -398,34 +402,10 @@ public class ScenetecMailService {
 		// 调用查询成员服务
 	    Map<String, Person> emailPersons = emailUserList.stream().collect(Collectors.toMap(Person::getUserId, person->person));
 		if(emailPersons.containsKey(userId)) {
-		    //包含，判断值是否一样
-		    /*Person person = emailPersons.get(userId);
-		    if(equealObj(ldapPerson,person)) {
-		        return true;
-		    }else {
-		        return false;
-		    }*/
 		    return true;
 		}else {
 		    return false;
 		}
-	    /*String userGetUrl = paramBean.getUserGet() + "?access_token=" + getToken() + "&userid=" + userId;
-		try {
-			String userGetRes = HttpClientUtil.sendGet(null, userGetUrl);
-			if (!StringUtils.isEmpty(userGetRes)) {
-				// 获取返回码
-				JSONObject userGetResJson = JSONObject.parseObject(userGetRes);
-				String userGetCode = String.valueOf(userGetResJson.get("errcode"));
-				if ("60111".equals(userGetCode)) {
-					return false;
-				}
-				if ("0".equals(userGetCode)) {
-					return true;
-				}
-			}
-		} catch (Exception e) {
-			return false;
-		}*/
 
 	}
 	
@@ -439,4 +419,19 @@ public class ScenetecMailService {
 	        return false;
 	    }
 	}
+	//检查调用腾讯邮箱api异常
+    private void checkException (String resultJson) {
+        if (StringUtils.isEmpty(resultJson)) {
+            throw new WeixinRequestException("无返回");
+        }
+
+        String errcode = JSONObject.parseObject(resultJson).getString("errcode");
+        String errmsg = JSONObject.parseObject(resultJson).getString("errmsg");
+        if (!errcode.equals("0")) {
+            errmsg = "错误码： " + errcode + "，错误信息: "+ errmsg;
+            logger.error(errmsg);
+            throw new WeixinRequestException(errmsg);
+        }
+
+    }
 }
