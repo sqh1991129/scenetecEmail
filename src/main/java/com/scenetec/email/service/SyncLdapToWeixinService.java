@@ -121,7 +121,9 @@ public class SyncLdapToWeixinService {
             }
             if (weixinMember.isNeedDelete()) {
                 try {
-                    scenetecWeixinService.deleteUser(weixinMember.getUserid());
+                    weixinMember.setEnable(0);
+                    // 改为禁用
+                    scenetecWeixinService.updateUser(weixinMember);
                     logger.info("删除用户成功: " + weixinMember.toString());
                 }catch (Exception e){
                     logger.info("删除用户失败: " + weixinMember.toString());
