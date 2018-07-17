@@ -18,11 +18,7 @@ public class LdapManagerTest {
 
     @Test
     public void testSearch() {
-        try {
-            ldapManager.search();
-        } catch (NamingException e) {
-            e.printStackTrace();
-        }
+        ldapManager.search();
     }
 
 }
